@@ -2,11 +2,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GeminiUrlResponse } from "../types";
 
-// Always use the recommended initialization with named parameter and direct process.env usage
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const generateWorkspaceConfig = async (topic: string): Promise<GeminiUrlResponse> => {
   try {
+    // Initialize lazily to avoid top-level module crash when process.env.API_KEY is empty string
+    const apiKey = process.env.API_KEY;
+    
+    // If no API key is present (e.g. during UI testing), throw specific error to trigger fallback
+    if (!apiKey) {
+      console.warn("Gemini API Key is missing (UI Test Mode)");
+      throw new Error("API Key is missing");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Generate 4 valid, embeddable URLS for a web workspace focused on: "${topic}". 
@@ -29,21 +37,20 @@ export const generateWorkspaceConfig = async (topic: string): Promise<GeminiUrlR
       }
     });
 
-    // Access the generated text using the .text property as a string
     if (response.text) {
       return JSON.parse(response.text) as GeminiUrlResponse;
     }
-    throw new Error("No response from AI");
+    throw new Error("Empty response");
   } catch (error) {
-    console.error("Error generating workspace:", error);
-    // Fallback if AI fails
+    console.error("AI Config Error:", error);
+    // Return a safe default so the app doesn't break
     return {
-      workspaceName: "Error / Default",
+      workspaceName: "Default Workspace",
       urls: [
         "https://www.wikipedia.org",
-        "https://example.com",
-        "https://bing.com",
-        "https://www.w3.org"
+        "https://www.bing.com",
+        "https://news.ycombinator.com",
+        "https://www.w3schools.com"
       ]
     };
   }

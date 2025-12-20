@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserFrame } from './BrowserFrame';
 import { FrameConfig, GeminiUrlResponse } from './types';
-import { generateWorkspaceConfig } from './geminiService';
+import { generateWorkspaceConfig } from './services/geminiService';
 import { Loader2, Plus, Monitor, LayoutGrid, Smartphone, Menu } from 'lucide-react';
 
 const INITIAL_FRAMES: FrameConfig[] = [
