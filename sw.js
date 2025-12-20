@@ -1,13 +1,13 @@
 
-const CACHE_NAME = 'dex-quad-v8';
+const CACHE_NAME = 'dex-quad-v9';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   'https://cdn.tailwindcss.com',
-  'https://esm.sh/react@^19.2.3',
-  'https://esm.sh/lucide-react@^0.562.0',
-  'https://esm.sh/react-dom@^19.2.3/'
+  'https://esm.sh/react@18.3.1',
+  'https://esm.sh/lucide-react@^0.292.0',
+  'https://esm.sh/react-dom@18.3.1'
 ];
 
 self.addEventListener('install', (e) => {
