@@ -1,9 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { BrowserFrame } from './BrowserFrame';
-import { FrameConfig, GeminiUrlResponse } from './types';
-import { generateWorkspaceConfig } from './services/geminiService';
-import { Loader2, Plus, Monitor, LayoutGrid, Smartphone, Menu } from 'lucide-react';
+import { FrameConfig } from './types';
+import { Plus, Monitor, Smartphone } from 'lucide-react';
 
 const INITIAL_FRAMES: FrameConfig[] = [
   { id: 1, url: 'https://172.16.8.91/remote-access', isMaximized: false },
@@ -14,8 +13,6 @@ const INITIAL_FRAMES: FrameConfig[] = [
 
 export default function App() {
   const [frames, setFrames] = useState<FrameConfig[]>(INITIAL_FRAMES);
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [isAiLoading, setIsAiLoading] = useState(false);
   const [isPortrait, setIsPortrait] = useState(false);
 
   // Detect orientation for mobile optimization
@@ -53,25 +50,6 @@ export default function App() {
     if (frames.length >= 4) return;
     const newId = Math.max(...frames.map(f => f.id), 0) + 1;
     setFrames(prev => [...prev, { id: newId, url: 'about:blank', isMaximized: false }]);
-  };
-
-  const handleAiSetup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiPrompt.trim()) return;
-    setIsAiLoading(true);
-    try {
-      const result: GeminiUrlResponse = await generateWorkspaceConfig(aiPrompt);
-      if (result && result.urls.length > 0) {
-        const newFrames = result.urls.slice(0, 4).map((url, idx) => ({
-          id: idx + 1, url, isMaximized: false
-        }));
-        setFrames(newFrames);
-      }
-    } catch (error) {
-      alert("AI Setup requires internet. Please check connection.");
-    } finally {
-      setIsAiLoading(false);
-    }
   };
 
   const isAnyMaximized = frames.some(f => f.isMaximized);
@@ -113,18 +91,7 @@ export default function App() {
             <h1 className="text-xs font-black text-gray-300 tracking-tighter uppercase sm:hidden">QUAD</h1>
           </div>
 
-          <form onSubmit={handleAiSetup} className="flex items-center gap-1 w-full max-w-[200px] sm:max-w-[300px] mx-2">
-            <input
-              type="text"
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder={isPortrait ? "AI Setup..." : "AI Workspace Setup..."}
-              className="w-full bg-gray-900 text-[11px] text-white border border-gray-700 rounded px-2 h-7 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-900 placeholder-gray-600"
-            />
-            <button type="submit" disabled={isAiLoading} className="bg-blue-900/40 text-blue-400 text-[10px] px-3 h-7 rounded hover:bg-blue-600 hover:text-white transition-all font-bold border border-blue-800/50">
-              {isAiLoading ? <Loader2 size={12} className="animate-spin" /> : "GO"}
-            </button>
-          </form>
+          <div className="flex-grow"></div>
 
           <div className="flex items-center gap-2">
              {frames.length < 4 && !isAnyMaximized && (
@@ -135,11 +102,6 @@ export default function App() {
              <div className="text-[10px] text-gray-500 font-mono font-bold">{frames.length}/4</div>
           </div>
         </header>
-        
-        {/* Optional Visual Hint: A tiny line indicating a menu is up there? 
-            Maybe unnecessary if we want full stealth. Let's keep it invisible trigger only. 
-            However, extending the hover area slightly below the header helps prevent accidental closing.
-        */}
       </div>
 
       <main className="h-full w-full relative bg-black overflow-hidden">

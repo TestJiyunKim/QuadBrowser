@@ -1,3 +1,4 @@
+
 export interface FrameConfig {
   id: number;
   url: string;

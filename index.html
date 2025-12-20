@@ -61,8 +61,7 @@
     <script>
       window.process = {
         env: {
-          NODE_ENV: 'production',
-          API_KEY: '' // API Key should be injected here if needed, keeping empty to prevent crash
+          NODE_ENV: 'production'
         }
       };
       
@@ -92,12 +91,12 @@
   <script type="importmap">
 {
   "imports": {
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
     "react": "https://esm.sh/react@18.3.1",
     "react/": "https://esm.sh/react@18.3.1/",
     "lucide-react": "https://esm.sh/lucide-react@^0.292.0",
     "react-dom": "https://esm.sh/react-dom@18.3.1",
-    "react-dom/": "https://esm.sh/react-dom@18.3.1/"
+    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
   }
 }
 </script>
@@ -105,7 +104,7 @@
   <body class="text-white select-none">
     <div id="loading-text">
       Loading DeX QuadBrowser...<br/>
-      <span style="font-size:10px; opacity:0.5">(If stuck, check console)</span>
+      <span style="font-size:10px; opacity:0.5">(Offline Mode)</span>
     </div>
     <div id="root"></div>
     <div id="error-overlay"></div>
@@ -116,7 +115,7 @@
         if (root && root.childElementCount === 0) {
            const loader = document.getElementById('loading-text');
            if (loader) {
-             loader.innerHTML = "App failed to load.<br>Please check network connection or API Key configuration.";
+             loader.innerHTML = "App failed to load.<br>Please check network connection.";
              loader.style.color = "#ff5555";
            }
         }
@@ -124,14 +123,12 @@
 
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Use standard relative registration. 
-          // We catch errors to prevent issues in preview environments (like AI Studio) where origin mismatches occur.
           navigator.serviceWorker.register('./sw.js')
             .then(reg => {
               console.log('SW Registered');
             })
             .catch(err => {
-              console.warn('SW Registration Warning (harmless in preview):', err.message);
+              console.warn('SW Registration Warning:', err.message);
             });
         });
       }

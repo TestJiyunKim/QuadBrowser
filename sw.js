@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'dex-quad-v15';
+const CACHE_NAME = 'dex-quad-v16';
 const ASSETS = [
   './',
   './index.html',
@@ -20,7 +20,6 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  if (e.request.url.includes('generativelanguage.googleapis.com')) return;
   e.respondWith(
     caches.match(e.request).then(res => res || fetch(e.request).then(fetchRes => {
       return caches.open(CACHE_NAME).then(cache => {
