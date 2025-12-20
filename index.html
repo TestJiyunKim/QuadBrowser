@@ -104,7 +104,7 @@
   <body class="text-white select-none">
     <div id="loading-text">
       Loading DeX QuadBrowser...<br/>
-      <span style="font-size:10px; opacity:0.5">(Offline Mode)</span>
+      <span style="font-size:10px; opacity:0.5">(Offline Optimized)</span>
     </div>
     <div id="root"></div>
     <div id="error-overlay"></div>
@@ -115,7 +115,7 @@
         if (root && root.childElementCount === 0) {
            const loader = document.getElementById('loading-text');
            if (loader) {
-             loader.innerHTML = "App failed to load.<br>Please check network connection.";
+             loader.innerHTML = "App failed to load.<br>Check network for initial resource download.";
              loader.style.color = "#ff5555";
            }
         }
