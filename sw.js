@@ -1,27 +1,28 @@
 
-const CACHE_NAME = 'dex-quad-v19';
+const CACHE_NAME = 'dex-quad-v20';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   'https://cdn.tailwindcss.com',
-  'https://esm.sh/react@19.0.0-rc-66855b96-20241106?dev',
-  'https://esm.sh/react-dom@19.0.0-rc-66855b96-20241106?dev',
-  'https://esm.sh/react-dom@19.0.0-rc-66855b96-20241106/client?dev',
-  'https://esm.sh/lucide-react@0.460.0?external=react,react-dom'
+  'https://esm.sh/react@18.3.1',
+  'https://esm.sh/react-dom@18.3.1',
+  'https://esm.sh/react-dom@18.3.1/client',
+  'https://esm.sh/lucide-react@0.292.0?external=react,react-dom'
 ];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
+      // Fetch with no-cache to ensure we get fresh assets from CDN
       return Promise.all(
         ASSETS.map(url => {
-            return fetch(url, { cache: 'no-cache' }).then(response => {
-                if (!response.ok) throw Error('Not ok');
-                return cache.put(url, response);
-            }).catch(err => {
-                console.warn('Failed to cache:', url, err);
-            });
+          return fetch(url, { cache: 'no-cache' })
+            .then(res => {
+              if (res.ok) return cache.put(url, res);
+              throw new Error('Fetch failed: ' + url);
+            })
+            .catch(err => console.warn('Cache fail:', url, err));
         })
       );
     })
@@ -35,21 +36,25 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  // Navigation requests: Network first, then cache (to allow updates)
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request).catch(() => caches.match(e.request))
     );
     return;
   }
-
+  
+  // Asset requests: Cache first, then network (stale-while-revalidate logic could be better but CacheFirst is safer for offline)
   e.respondWith(
-    caches.match(e.request).then(res => res || fetch(e.request).then(fetchRes => {
-      if (fetchRes.status === 200) {
-        const resClone = fetchRes.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(e.request, resClone));
-      }
-      return fetchRes;
-    }))
+    caches.match(e.request).then(cached => {
+      return cached || fetch(e.request).then(response => {
+        if (response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+        }
+        return response;
+      });
+    })
   );
 });
 
