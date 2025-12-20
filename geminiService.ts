@@ -2,14 +2,22 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GeminiUrlResponse } from "./types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const generateWorkspaceConfig = async (topic: string): Promise<GeminiUrlResponse> => {
   try {
+    // Initialize lazily to avoid top-level module crash when process.env.API_KEY is empty string
+    const apiKey = process.env.API_KEY;
+    
+    if (!apiKey) {
+      console.warn("Gemini API Key is missing.");
+      throw new Error("API Key is missing");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Generate 4 valid, embeddable URLS for a web workspace focused on: "${topic}". 
-      Prefer Wikipedia, documentation sites, news aggregators, or tools that are known to allow iframe embedding.
+      Prefer Wikipedia, documentation sites, news aggregators, or tools that are known to allow iframe embedding (avoid major social media main pages or google search results as they block iframes).
       Return a JSON object with a workspace name and the list of 4 URLs.`,
       config: {
         responseMimeType: "application/json",

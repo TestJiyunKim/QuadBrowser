@@ -54,6 +54,7 @@
         font-family: sans-serif;
         font-size: 14px;
         pointer-events: none;
+        text-align: center;
       }
     </style>
     <!-- Polyfill for process.env to prevent crash in browser -->
@@ -102,10 +103,25 @@
 </script>
 </head>
   <body class="text-white select-none">
-    <div id="loading-text">Loading DeX QuadBrowser...</div>
+    <div id="loading-text">
+      Loading DeX QuadBrowser...<br/>
+      <span style="font-size:10px; opacity:0.5">(If stuck, check console)</span>
+    </div>
     <div id="root"></div>
     <div id="error-overlay"></div>
     <script>
+      // Fallback timeout to warn user if React doesn't mount
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (root && root.childElementCount === 0) {
+           const loader = document.getElementById('loading-text');
+           if (loader) {
+             loader.innerHTML = "App failed to load.<br>Please check network connection or API Key configuration.";
+             loader.style.color = "#ff5555";
+           }
+        }
+      }, 5000);
+
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           // Use standard relative registration. 
