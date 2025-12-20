@@ -1,0 +1,5 @@
+{
+  "name": "DeX QuadBrowser",
+  "description": "A productivity browser designed for Samsung DeX mode, allowing simultaneous viewing of four web pages in a 2x2 grid with AI-powered workspace setup.",
+  "requestFramePermissions": []
+}

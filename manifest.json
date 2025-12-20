@@ -1,0 +1,21 @@
+{
+  "short_name": "QuadVNC",
+  "name": "DeX QuadBrowser VNC",
+  "icons": [
+    {
+      "src": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/google-chrome.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/google-chrome.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#000000",
+  "orientation": "landscape"
+}
