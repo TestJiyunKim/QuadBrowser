@@ -69,7 +69,6 @@
       
       // Global Error Handler
       window.onerror = function(msg, url, lineNo, columnNo, error) {
-        // Ignore benign SW errors
         if (msg.includes('ServiceWorker') || msg.includes('scriptURL')) return false;
 
         const overlay = document.getElementById('error-overlay');
@@ -90,9 +89,6 @@
         if (event.reason && event.reason.toString().includes('ServiceWorker')) return;
         
         const overlay = document.getElementById('error-overlay');
-        const loader = document.getElementById('loading-text');
-        
-        if (loader) loader.style.display = 'none';
         if (overlay) {
           overlay.style.display = 'block';
           overlay.innerHTML += `<div style="margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:10px;">
@@ -104,11 +100,11 @@
   <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@19?dev",
-    "react/": "https://esm.sh/react@19/",
-    "react-dom": "https://esm.sh/react-dom@19?dev",
-    "react-dom/": "https://esm.sh/react-dom@19/",
-    "react-dom/client": "https://esm.sh/react-dom@19/client?dev",
+    "react": "https://esm.sh/react@19.0.0-rc-66855b96-20241106?dev",
+    "react/": "https://esm.sh/react@19.0.0-rc-66855b96-20241106/",
+    "react-dom": "https://esm.sh/react-dom@19.0.0-rc-66855b96-20241106?dev",
+    "react-dom/": "https://esm.sh/react-dom@19.0.0-rc-66855b96-20241106/",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0-rc-66855b96-20241106/client?dev",
     "lucide-react": "https://esm.sh/lucide-react@0.460.0?external=react,react-dom",
     "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
   }
@@ -117,8 +113,8 @@
 </head>
   <body class="text-white select-none">
     <div id="loading-text">
-      Initializing DeX QuadBrowser (React 19)...<br/>
-      <span style="font-size:10px; opacity:0.5">Attempting to load modules...</span>
+      Initializing DeX QuadBrowser...<br/>
+      <span style="font-size:10px; opacity:0.5">Loading React 19 RC Modules...</span>
     </div>
     <div id="root"></div>
     <div id="error-overlay"></div>
@@ -132,19 +128,23 @@
              loader.innerHTML = `
                <div style="color:#ff5555; font-weight:bold;">App failed to load.</div>
                <div style="font-size:12px; margin-top:5px;">
-                 1. Check internet connection (required for first load).<br/>
-                 2. Check console for CSP or Network errors.<br/>
-                 3. If offline, ensure ServiceWorker is activated.
+                 Check console for errors. <br/>
+                 Ensure esm.sh is reachable.
                </div>
              `;
            }
         }
-      }, 8000); // Extended timeout for slower networks
+      }, 8000);
 
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('SW Registered'))
+            .then(reg => {
+                // Check if there's an updated SW waiting
+                if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+            })
             .catch(err => console.warn('SW Failed:', err));
         });
       }

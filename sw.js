@@ -1,21 +1,19 @@
 
-const CACHE_NAME = 'dex-quad-v18';
-// Cache the exact URLs defined in the import map to ensure offline capability
+const CACHE_NAME = 'dex-quad-v19';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   'https://cdn.tailwindcss.com',
-  'https://esm.sh/react@19?dev',
-  'https://esm.sh/react-dom@19?dev',
-  'https://esm.sh/react-dom@19/client?dev',
+  'https://esm.sh/react@19.0.0-rc-66855b96-20241106?dev',
+  'https://esm.sh/react-dom@19.0.0-rc-66855b96-20241106?dev',
+  'https://esm.sh/react-dom@19.0.0-rc-66855b96-20241106/client?dev',
   'https://esm.sh/lucide-react@0.460.0?external=react,react-dom'
 ];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      // Use 'no-cache' to ensure we get the latest version from the server during install
       return Promise.all(
         ASSETS.map(url => {
             return fetch(url, { cache: 'no-cache' }).then(response => {
@@ -37,7 +35,6 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Network falling back to cache strategy for main document to ensure updates
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request).catch(() => caches.match(e.request))
@@ -47,7 +44,6 @@ self.addEventListener('fetch', (e) => {
 
   e.respondWith(
     caches.match(e.request).then(res => res || fetch(e.request).then(fetchRes => {
-      // Cache successful third-party requests (like esm.sh bundles) dynamically if missed
       if (fetchRes.status === 200) {
         const resClone = fetchRes.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(e.request, resClone));
@@ -55,4 +51,10 @@ self.addEventListener('fetch', (e) => {
       return fetchRes;
     }))
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
