@@ -312,6 +312,12 @@ function App() {
     setFrames(prev => prev.filter(f => f.id !== id));
   };
 
+  const handleAddFrame = () => {
+    if (frames.length >= 4) return;
+    const newId = Math.max(...frames.map(f => f.id), 0) + 1;
+    setFrames(prev => [...prev, { id: newId, url: 'about:blank', isMaximized: false }]);
+  };
+
   const isAnyMaximized = frames.some(f => f.isMaximized);
 
   const getGridStyle = () => {
@@ -329,7 +335,7 @@ function App() {
 
   return (
     <div className="flex flex-col h-[100dvh] w-screen bg-black text-gray-100 font-sans overflow-hidden pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      {/* Hidden Menu Removed as per request */}
+      {/* Hidden floating header removed as per request */}
       
       <main className="h-full w-full relative bg-black overflow-hidden">
         <div 

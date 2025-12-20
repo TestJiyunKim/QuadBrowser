@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'dex-quad-v23';
+const CACHE_NAME = 'dex-quad-v24';
 const ASSETS = [
   './',
   './index.html',
@@ -17,7 +17,6 @@ const ASSETS = [
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      // Fetch with no-cache to ensure we get fresh assets from CDN
       return Promise.all(
         ASSETS.map(url => {
           return fetch(url, { cache: 'no-cache' })
@@ -40,7 +39,6 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Navigation requests: Network first, then cache
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request).catch(() => caches.match(e.request))
@@ -48,7 +46,6 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   
-  // Asset requests: Cache first, then network
   e.respondWith(
     caches.match(e.request).then(cached => {
       return cached || fetch(e.request).then(response => {
