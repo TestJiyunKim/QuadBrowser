@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, KeyRound, Monitor, MousePointer2, Gamepad2, Move, Smartphone } from 'lucide-react';
+import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, KeyRound, Monitor, MousePointer2, Gamepad2, Move, Smartphone, ChevronDown } from 'lucide-react';
 
 // --- Types ---
 interface FrameConfig {
@@ -174,7 +174,7 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
           <button onClick={onClose} title="Close Frame" className="p-1 text-red-800 hover:text-red-500 hover:bg-gray-800 rounded"><X size={12} /></button>
       </div>
 
-      {/* Control Pad */}
+      {/* Control Pad - Translucent & With Top Toggle */}
       {showPad && (
         <div 
             className="absolute bottom-4 right-4 z-40 animate-in fade-in zoom-in duration-200"
@@ -184,29 +184,41 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
             onDoubleClick={stopPropagation}
             onWheel={stopPropagation}
         >
-            <div className="bg-black/80 backdrop-blur p-1 rounded-xl border border-white/10 grid grid-cols-3 gap-1 w-28 h-28 shadow-2xl">
-                {/* Row 1 */}
-                <div className="flex items-center justify-center text-[9px] font-mono text-blue-400 bg-black/40 rounded border border-blue-900/30 select-none">
-                  {Math.round(scale * 100)}%
-                </div>
-                <button onClick={() => handlePan(0, 1)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowUp size={16} /></button>
-                <button onClick={handleReset} title="Reset View" className="bg-red-900/30 hover:bg-red-600 text-white rounded flex items-center justify-center transition-colors active:bg-red-700"><RotateCcw size={12} /></button>
-
-                {/* Row 2 */}
-                <button onClick={() => handlePan(1, 0)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowLeft size={16} /></button>
+            <div className="bg-black/50 backdrop-blur-md p-1 rounded-xl border border-white/10 flex flex-col gap-1 shadow-2xl w-28">
+                {/* Top Toggle / Close Button */}
                 <button 
-                  onClick={toggleDragMode} 
-                  title={isDragMode ? "Disable Drag Mode" : "Enable Drag Mode"} 
-                  className={`${isDragMode ? 'bg-blue-600 text-white animate-pulse' : 'bg-gray-800/50 text-gray-400 hover:bg-blue-600 hover:text-white'} rounded flex items-center justify-center transition-colors`}
+                  onClick={() => setShowPad(false)} 
+                  className="w-full flex items-center justify-center p-1 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group cursor-pointer"
+                  title="Close Pad"
                 >
-                  <Move size={12} />
+                  <ChevronDown size={14} className="text-gray-400 group-hover:text-white" />
                 </button>
-                <button onClick={() => handlePan(-1, 0)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowRight size={16} /></button>
 
-                {/* Row 3 */}
-                <button onClick={() => handleZoom(0.05)} className="bg-blue-900/30 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><Plus size={16} /></button>
-                <button onClick={() => handlePan(0, -1)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowDown size={16} /></button>
-                <button onClick={() => handleZoom(-0.05)} className="bg-blue-900/30 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><Minus size={16} /></button>
+                {/* Navigation Grid */}
+                <div className="grid grid-cols-3 gap-1 h-28">
+                  {/* Row 1 */}
+                  <div className="flex items-center justify-center text-[9px] font-mono text-blue-400 bg-black/40 rounded border border-blue-900/30 select-none">
+                    {Math.round(scale * 100)}%
+                  </div>
+                  <button onClick={() => handlePan(0, 1)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowUp size={16} /></button>
+                  <button onClick={handleReset} title="Reset View" className="bg-red-900/30 hover:bg-red-600 text-white rounded flex items-center justify-center transition-colors active:bg-red-700"><RotateCcw size={12} /></button>
+
+                  {/* Row 2 */}
+                  <button onClick={() => handlePan(1, 0)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowLeft size={16} /></button>
+                  <button 
+                    onClick={toggleDragMode} 
+                    title={isDragMode ? "Disable Drag Mode" : "Enable Drag Mode"} 
+                    className={`${isDragMode ? 'bg-blue-600 text-white animate-pulse' : 'bg-gray-800/50 text-gray-400 hover:bg-blue-600 hover:text-white'} rounded flex items-center justify-center transition-colors`}
+                  >
+                    <Move size={12} />
+                  </button>
+                  <button onClick={() => handlePan(-1, 0)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowRight size={16} /></button>
+
+                  {/* Row 3 */}
+                  <button onClick={() => handleZoom(0.05)} className="bg-blue-900/30 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><Plus size={16} /></button>
+                  <button onClick={() => handlePan(0, -1)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowDown size={16} /></button>
+                  <button onClick={() => handleZoom(-0.05)} className="bg-blue-900/30 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><Minus size={16} /></button>
+                </div>
             </div>
         </div>
       )}
@@ -300,12 +312,6 @@ function App() {
     setFrames(prev => prev.filter(f => f.id !== id));
   };
 
-  const handleAddFrame = () => {
-    if (frames.length >= 4) return;
-    const newId = Math.max(...frames.map(f => f.id), 0) + 1;
-    setFrames(prev => [...prev, { id: newId, url: 'about:blank', isMaximized: false }]);
-  };
-
   const isAnyMaximized = frames.some(f => f.isMaximized);
 
   const getGridStyle = () => {
@@ -323,25 +329,8 @@ function App() {
 
   return (
     <div className="flex flex-col h-[100dvh] w-screen bg-black text-gray-100 font-sans overflow-hidden pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      <div className="fixed top-0 left-0 right-0 z-[100] group h-2 hover:h-auto flex flex-col items-center">
-        <header className="w-full h-10 bg-gray-950/95 backdrop-blur border-b border-gray-800 flex items-center justify-between px-3 shadow-2xl transform -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out pointer-events-auto">
-          <div className="flex items-center gap-2">
-            {isPortrait && window.innerWidth < 600 ? <Smartphone size={16} className="text-blue-500" /> : <Monitor size={16} className="text-blue-500" />}
-            <h1 className="text-xs font-black text-gray-300 tracking-tighter uppercase hidden sm:block">QUAD_VNC_DEX</h1>
-            <h1 className="text-xs font-black text-gray-300 tracking-tighter uppercase sm:hidden">QUAD</h1>
-          </div>
-          <div className="flex-grow"></div>
-          <div className="flex items-center gap-2">
-             {frames.length < 4 && !isAnyMaximized && (
-               <button onClick={handleAddFrame} className="flex items-center gap-1 text-[10px] bg-gray-800 text-green-400 px-2 h-7 rounded border border-gray-700 hover:bg-green-900/50 hover:border-green-800">
-                 <Plus size={12} /> <span className="hidden sm:inline">ADD</span>
-               </button>
-             )}
-             <div className="text-[10px] text-gray-500 font-mono font-bold">{frames.length}/4</div>
-          </div>
-        </header>
-      </div>
-
+      {/* Hidden Menu Removed as per request */}
+      
       <main className="h-full w-full relative bg-black overflow-hidden">
         <div 
           className="h-full w-full grid gap-px bg-gray-900" 
