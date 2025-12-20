@@ -24,8 +24,8 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
 }) => {
   const [inputUrl, setInputUrl] = useState(frame.url);
   const [key, setKey] = useState(0);
-  // Default scale 0.75 fits a 1280px remote screen into a half-width DeX window nicely
-  const [scale, setScale] = useState(0.75);
+  // Default scale updated to 1.0 (100%) as requested. Panning handles the overflow.
+  const [scale, setScale] = useState(1.0);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [showPad, setShowPad] = useState(false);
   
@@ -38,8 +38,8 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   useEffect(() => {
     setInputUrl(frame.url);
     setKey(prev => prev + 1);
-    // Reset to "Fit" view on URL change
-    setScale(0.75);
+    // Reset to 100% view on URL change
+    setScale(1.0);
     setPosition({ x: 0, y: 0 });
     setShowPad(false);
     setIsDragMode(false);
@@ -53,12 +53,10 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     let finalUrl = inputUrl;
+    // Modified logic: Always default to HTTPS unless the user explicitly types HTTP.
+    // This accommodates local servers that only listen on 443 (HTTPS) even with self-signed certs.
     if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-        if (/^(192|172|10|localhost|127)/.test(finalUrl)) {
-            finalUrl = `https://${finalUrl}`;
-        } else {
-            finalUrl = `https://${finalUrl}`;
-        }
+        finalUrl = `https://${finalUrl}`;
     }
     setInputUrl(finalUrl);
     onUpdateUrl(frame.id, finalUrl);
@@ -77,7 +75,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   };
 
   const handleReset = () => {
-    setScale(0.75); 
+    setScale(1.0); // Reset to 100%
     setPosition({ x: 0, y: 0 });
     setIsDragMode(false);
   };
@@ -163,7 +161,7 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
             <button onClick={() => handleZoom(-0.05)} title="Zoom Out" className="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded"><Minus size={12} /></button>
             <span className="text-[9px] font-mono text-blue-400 w-8 text-center select-none">{Math.round(scale * 100)}%</span>
             <button onClick={() => handleZoom(0.05)} title="Zoom In" className="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded"><Plus size={12} /></button>
-            <button onClick={handleReset} title="Fit Screen (75%)" className="p-1 text-green-500/80 hover:text-green-400 hover:bg-gray-700 rounded"><Monitor size={12} /></button>
+            <button onClick={handleReset} title="Fit Screen (100%)" className="p-1 text-green-500/80 hover:text-green-400 hover:bg-gray-700 rounded"><Monitor size={12} /></button>
           </div>
 
           <div className="h-4 w-px bg-gray-700 mx-1"></div>
