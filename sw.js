@@ -1,14 +1,17 @@
 
-const CACHE_NAME = 'dex-quad-v21';
+const CACHE_NAME = 'dex-quad-v23';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './index.tsx',
+  'https://unpkg.com/@babel/standalone/babel.min.js',
   'https://cdn.tailwindcss.com',
   'https://esm.sh/react@18.3.1',
   'https://esm.sh/react-dom@18.3.1',
   'https://esm.sh/react-dom@18.3.1/client',
-  'https://esm.sh/lucide-react@0.292.0?external=react,react-dom'
+  'https://esm.sh/lucide-react@0.292.0?external=react,react-dom',
+  'https://esm.sh/@google/genai@^1.34.0'
 ];
 
 self.addEventListener('install', (e) => {
@@ -20,7 +23,8 @@ self.addEventListener('install', (e) => {
           return fetch(url, { cache: 'no-cache' })
             .then(res => {
               if (res.ok) return cache.put(url, res);
-              throw new Error('Fetch failed: ' + url);
+              console.warn('Skipping cache for:', url, res.status);
+              return null;
             })
             .catch(err => console.warn('Cache fail:', url, err));
         })
@@ -36,7 +40,7 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Navigation requests: Network first, then cache (to allow updates)
+  // Navigation requests: Network first, then cache
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request).catch(() => caches.match(e.request))
@@ -44,7 +48,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   
-  // Asset requests: Cache first, then network (stale-while-revalidate logic could be better but CacheFirst is safer for offline)
+  // Asset requests: Cache first, then network
   e.respondWith(
     caches.match(e.request).then(cached => {
       return cached || fetch(e.request).then(response => {

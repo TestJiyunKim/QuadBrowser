@@ -12,6 +12,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
+    <!-- Babel Standalone for in-browser TSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       html, body {
@@ -65,7 +68,7 @@
         return false;
       };
       
-      // Capture phase error handler for resource loading failures (scripts, css, etc)
+      // Capture phase error handler for resource loading failures
       window.addEventListener('error', function(event) {
         if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
           showError(`[Resource Error] Failed to load: ${event.target.src || event.target.href}`);
@@ -103,13 +106,12 @@
 </head>
   <body class="text-white select-none">
     <div id="loading-text">
-      Loading DeX QuadBrowser (Stable v21)...<br/>
-      <span style="font-size:10px; opacity:0.5">Connecting to network...</span>
+      Loading DeX QuadBrowser (Stable v23)...<br/>
+      <span style="font-size:10px; opacity:0.5">Initializing Application...</span>
     </div>
     <div id="root"></div>
     <div id="error-overlay"></div>
     <script>
-      // Extended timeout to 15s for slow connections
       setTimeout(() => {
         const root = document.getElementById('root');
         if (root && root.childElementCount === 0) {
@@ -139,6 +141,7 @@
         });
       }
     </script>
-    <script type="module" src="./index.tsx"></script>
+    <!-- Use Babel to compile TSX on the fly. data-type="module" preserves ESM imports -->
+    <script type="text/babel" data-type="module" src="./index.tsx" data-presets="react,typescript"></script>
   </body>
 </html>
