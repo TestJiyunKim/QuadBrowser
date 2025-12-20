@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserFrame } from './BrowserFrame';
 import { FrameConfig, GeminiUrlResponse } from './types';
 import { generateWorkspaceConfig } from './geminiService';
-import { Loader2, Plus, Monitor, LayoutGrid, Smartphone } from 'lucide-react';
+import { Loader2, Plus, Monitor, LayoutGrid, Smartphone, Menu } from 'lucide-react';
 
 const INITIAL_FRAMES: FrameConfig[] = [
   { id: 1, url: 'https://172.16.8.91/remote-access', isMaximized: false },
@@ -20,6 +20,10 @@ export default function App() {
 
   // Detect orientation for mobile optimization
   useEffect(() => {
+    // Hide loading text once App mounts
+    const loader = document.getElementById('loading-text');
+    if (loader) loader.style.display = 'none';
+
     const checkOrientation = () => {
       setIsPortrait(window.innerHeight > window.innerWidth);
     };
@@ -92,42 +96,53 @@ export default function App() {
   };
 
   return (
-    // Added pt-[env(safe-area-inset-top)] for notch support
-    // Added pb-[env(safe-area-inset-bottom)] for home bar support
-    <div className="flex flex-col h-screen w-screen bg-black text-gray-100 font-sans overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    // Removed fixed top padding to maximize screen real estate.
+    // The content will now extend to the very top edge.
+    // pb-[env] is kept for bottom gesture bar safety.
+    <div className="flex flex-col h-[100dvh] w-screen bg-black text-gray-100 font-sans overflow-hidden pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       
-      {/* Header with improved styling for mobile visibility */}
-      <header className="flex-none h-10 bg-gray-950 border-b border-gray-800 flex items-center justify-between px-3 z-50 shadow-lg">
-        <div className="flex items-center gap-2">
-          {isPortrait && window.innerWidth < 600 ? <Smartphone size={16} className="text-blue-500" /> : <Monitor size={16} className="text-blue-500" />}
-          <h1 className="text-xs font-black text-gray-300 tracking-tighter uppercase hidden sm:block">QUAD_VNC_DEX</h1>
-          <h1 className="text-xs font-black text-gray-300 tracking-tighter uppercase sm:hidden">QUAD</h1>
-        </div>
+      {/* Auto-Hiding Floating Header */}
+      {/* The container is fixed at top. h-2 is the 'trigger zone'. When hovered, it allows interaction with children. */}
+      <div className="fixed top-0 left-0 right-0 z-[100] group h-2 hover:h-auto flex flex-col items-center">
+        
+        {/* The actual header content: starts translated up (-translate-y-full) and slides down on group hover */}
+        <header className="w-full h-10 bg-gray-950/95 backdrop-blur border-b border-gray-800 flex items-center justify-between px-3 shadow-2xl transform -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out pointer-events-auto">
+          <div className="flex items-center gap-2">
+            {isPortrait && window.innerWidth < 600 ? <Smartphone size={16} className="text-blue-500" /> : <Monitor size={16} className="text-blue-500" />}
+            <h1 className="text-xs font-black text-gray-300 tracking-tighter uppercase hidden sm:block">QUAD_VNC_DEX</h1>
+            <h1 className="text-xs font-black text-gray-300 tracking-tighter uppercase sm:hidden">QUAD</h1>
+          </div>
 
-        <form onSubmit={handleAiSetup} className="flex items-center gap-1 w-full max-w-[200px] sm:max-w-[300px] mx-2">
-          <input
-            type="text"
-            value={aiPrompt}
-            onChange={(e) => setAiPrompt(e.target.value)}
-            placeholder={isPortrait ? "AI Setup..." : "AI Workspace Setup..."}
-            className="w-full bg-gray-900 text-[11px] text-white border border-gray-700 rounded px-2 h-7 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-900 placeholder-gray-600"
-          />
-          <button type="submit" disabled={isAiLoading} className="bg-blue-900/40 text-blue-400 text-[10px] px-3 h-7 rounded hover:bg-blue-600 hover:text-white transition-all font-bold border border-blue-800/50">
-            {isAiLoading ? <Loader2 size={12} className="animate-spin" /> : "GO"}
-          </button>
-        </form>
+          <form onSubmit={handleAiSetup} className="flex items-center gap-1 w-full max-w-[200px] sm:max-w-[300px] mx-2">
+            <input
+              type="text"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder={isPortrait ? "AI Setup..." : "AI Workspace Setup..."}
+              className="w-full bg-gray-900 text-[11px] text-white border border-gray-700 rounded px-2 h-7 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-900 placeholder-gray-600"
+            />
+            <button type="submit" disabled={isAiLoading} className="bg-blue-900/40 text-blue-400 text-[10px] px-3 h-7 rounded hover:bg-blue-600 hover:text-white transition-all font-bold border border-blue-800/50">
+              {isAiLoading ? <Loader2 size={12} className="animate-spin" /> : "GO"}
+            </button>
+          </form>
 
-        <div className="flex items-center gap-2">
-           {frames.length < 4 && !isAnyMaximized && (
-             <button onClick={handleAddFrame} className="flex items-center gap-1 text-[10px] bg-gray-800 text-green-400 px-2 h-7 rounded border border-gray-700 hover:bg-green-900/50 hover:border-green-800">
-               <Plus size={12} /> <span className="hidden sm:inline">ADD</span>
-             </button>
-           )}
-           <div className="text-[10px] text-gray-500 font-mono font-bold">{frames.length}/4</div>
-        </div>
-      </header>
+          <div className="flex items-center gap-2">
+             {frames.length < 4 && !isAnyMaximized && (
+               <button onClick={handleAddFrame} className="flex items-center gap-1 text-[10px] bg-gray-800 text-green-400 px-2 h-7 rounded border border-gray-700 hover:bg-green-900/50 hover:border-green-800">
+                 <Plus size={12} /> <span className="hidden sm:inline">ADD</span>
+               </button>
+             )}
+             <div className="text-[10px] text-gray-500 font-mono font-bold">{frames.length}/4</div>
+          </div>
+        </header>
+        
+        {/* Optional Visual Hint: A tiny line indicating a menu is up there? 
+            Maybe unnecessary if we want full stealth. Let's keep it invisible trigger only. 
+            However, extending the hover area slightly below the header helps prevent accidental closing.
+        */}
+      </div>
 
-      <main className="flex-grow relative bg-black overflow-hidden">
+      <main className="h-full w-full relative bg-black overflow-hidden">
         <div 
           className="h-full w-full grid gap-px bg-gray-900" 
           style={getGridStyle()}
