@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, KeyRound, Monitor, MousePointer2, Gamepad2, Move } from 'lucide-react';
-import { FrameConfig } from './types';
+import { FrameConfig } from './types.ts';
 
 interface BrowserFrameProps {
   frame: FrameConfig;

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { BrowserFrame } from './BrowserFrame';
-import { FrameConfig } from './types';
+import { BrowserFrame } from './BrowserFrame.tsx';
+import { FrameConfig } from './types.ts';
 import { Plus, Monitor, Smartphone } from 'lucide-react';
 
 const INITIAL_FRAMES: FrameConfig[] = [

@@ -58,28 +58,34 @@
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
       
+      // Global error handler
       window.onerror = function(msg, url, lineNo, columnNo, error) {
         if (msg.includes('ServiceWorker') || msg.includes('scriptURL')) return false;
-        const overlay = document.getElementById('error-overlay');
-        const loader = document.getElementById('loading-text');
-        if (loader) loader.style.display = 'none';
-        if (overlay) {
-          overlay.style.display = 'block';
-          overlay.innerText += `[Error] ${msg}\n${url}:${lineNo}\n\n`;
-        }
+        showError(`[Runtime Error] ${msg}\n${url}:${lineNo}`);
         return false;
       };
       
+      // Capture phase error handler for resource loading failures (scripts, css, etc)
+      window.addEventListener('error', function(event) {
+        if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
+          showError(`[Resource Error] Failed to load: ${event.target.src || event.target.href}`);
+        }
+      }, true);
+      
       window.addEventListener('unhandledrejection', function(event) {
         if (event.reason && event.reason.toString().includes('ServiceWorker')) return;
+        showError(`[Promise Error] ${event.reason}`);
+      });
+
+      function showError(text) {
         const overlay = document.getElementById('error-overlay');
         const loader = document.getElementById('loading-text');
         if (loader) loader.style.display = 'none';
         if (overlay) {
           overlay.style.display = 'block';
-          overlay.innerText += `[Promise] ${event.reason}\n\n`;
+          overlay.innerText += text + '\n\n';
         }
-      });
+      }
     </script>
   <script type="importmap">
 {
@@ -97,12 +103,13 @@
 </head>
   <body class="text-white select-none">
     <div id="loading-text">
-      Loading DeX QuadBrowser (Stable v20)...<br/>
+      Loading DeX QuadBrowser (Stable v21)...<br/>
       <span style="font-size:10px; opacity:0.5">Connecting to network...</span>
     </div>
     <div id="root"></div>
     <div id="error-overlay"></div>
     <script>
+      // Extended timeout to 15s for slow connections
       setTimeout(() => {
         const root = document.getElementById('root');
         if (root && root.childElementCount === 0) {
@@ -111,35 +118,24 @@
              loader.innerHTML = `<span style="color:#ff5555">App failed to load.</span><br/><br/>If you are offline, ensure the Service Worker is installed.<br/>Check console for network errors.`;
            }
         }
-      }, 10000);
+      }, 15000);
 
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           try {
-            // Service Workers usually only work on http/https
             if (window.location.protocol !== 'http:' && window.location.protocol !== 'https:') {
                console.warn('Skipping SW: unsupported protocol ' + window.location.protocol);
                return;
             }
-
-            // Defensive URL construction
             let swUrl = './sw.js';
-            try {
-               swUrl = new URL('sw.js', window.location.href).href;
-            } catch (e) {
-               console.warn('Could not resolve absolute SW path, using relative:', e);
-            }
+            try { swUrl = new URL('sw.js', window.location.href).href; } catch (e) {}
             
             navigator.serviceWorker.register(swUrl)
               .then(reg => {
                 if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
               })
-              .catch(err => {
-                console.warn('SW Registration Suppressed:', err);
-              });
-          } catch(e) {
-            console.error('SW Setup Error:', e);
-          }
+              .catch(err => console.warn('SW Registration Suppressed:', err));
+          } catch(e) { console.error('SW Setup Error:', e); }
         });
       }
     </script>
