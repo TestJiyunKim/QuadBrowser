@@ -99,9 +99,9 @@ export default function App() {
         </div>
       </header>
 
-      <main className="flex-grow p-0.5 relative bg-black">
+      <main className="flex-grow p-px relative bg-black">
         <div 
-          className="h-full w-full grid gap-0.5" 
+          className="h-full w-full grid gap-px" 
           style={getGridStyle()}
         >
           {frames.map((frame) => (
