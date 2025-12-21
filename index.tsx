@@ -342,18 +342,34 @@ function App() {
           className="h-full w-full grid gap-px bg-gray-900" 
           style={getGridStyle()}
         >
-          {frames.map((frame) => (
-            <BrowserFrame
-              key={frame.id}
-              frame={frame}
-              spanClass="col-span-1 row-span-1"
-              onUpdateUrl={handleUpdateUrl}
-              onMaximize={handleMaximize}
-              onRestore={handleRestore}
-              onClose={() => handleClose(frame.id)}
-              isMaximizedMode={isAnyMaximized}
-            />
-          ))}
+          {frames.map((frame, index) => {
+            let spanClass = "col-span-1 row-span-1";
+            
+            // If there are exactly 3 frames, make the FIRST one span 2 rows (vertical stretch)
+            const isPortraitMode = window.innerHeight > window.innerWidth;
+            const isMobile = window.innerWidth < 768;
+
+            if (!isAnyMaximized && frames.length === 3) {
+               if (isPortraitMode && isMobile) {
+                   spanClass = "col-span-1 row-span-1"; // Stacked vertically on mobile
+               } else if (index === 0) {
+                   spanClass = "col-span-1 row-span-2"; // Vertical strip on the left
+               }
+            }
+
+            return (
+              <BrowserFrame
+                key={frame.id}
+                frame={frame}
+                spanClass={spanClass}
+                onUpdateUrl={handleUpdateUrl}
+                onMaximize={handleMaximize}
+                onRestore={handleRestore}
+                onClose={() => handleClose(frame.id)}
+                isMaximizedMode={isAnyMaximized}
+              />
+            );
+          })}
         </div>
       </main>
     </div>
