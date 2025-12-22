@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, KeyRound, Monitor, MousePointer2, Gamepad2, Move, Smartphone, ChevronDown } from 'lucide-react';
+import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, KeyRound, Monitor, MousePointer2, Gamepad2, Move, ChevronDown, ExternalLink, ShieldAlert } from 'lucide-react';
 
 // --- Types ---
 interface FrameConfig {
@@ -58,12 +58,33 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    let finalUrl = inputUrl;
+    let finalUrl = inputUrl.trim();
+    
+    // Check if protocol is missing
     if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-        finalUrl = `https://${finalUrl}`;
+        // Regex to detect IP addresses (e.g., 192.168.1.1, 10.0.0.1) or localhost
+        // If it's an IP, default to http:// to avoid breaking internal tools that don't have SSL.
+        const isIP = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?$/.test(finalUrl) || finalUrl.includes('localhost');
+        
+        finalUrl = `${isIP ? 'http' : 'https'}://${finalUrl}`;
     }
+    
     setInputUrl(finalUrl);
     onUpdateUrl(frame.id, finalUrl);
+  };
+
+  const openExternal = () => {
+    window.open(inputUrl, '_blank');
+  };
+
+  const openCertFix = () => {
+    // Helper to bypass self-signed cert errors
+    const win = window.open(inputUrl, '_blank');
+    if (win) {
+        setTimeout(() => {
+            alert("After accepting the certificate in the new tab, close it and click the 'Reload' button in this frame.");
+        }, 500);
+    }
   };
 
   const handleZoom = (delta: number) => {
@@ -132,6 +153,8 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
   if (isMaximizedMode && !frame.isMaximized) return null;
 
   const containerClasses = frame.isMaximized ? "absolute inset-0 z-50 bg-black" : spanClass;
+  // Detect if URL is likely an internal IP
+  const isInternalIp = inputUrl.includes('192.168.') || inputUrl.includes('172.') || inputUrl.includes('10.') || inputUrl.includes('localhost');
 
   return (
     <div className={`relative flex flex-col bg-gray-900 border border-gray-800 overflow-hidden ${containerClasses}`}>
@@ -162,7 +185,11 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
           </div>
 
           <div className="h-4 w-px bg-gray-700 mx-1"></div>
-
+          
+          {isInternalIp && (
+             <button onClick={openCertFix} title="Certificate Error Bypass (Click if screen is white)" className="p-1 text-orange-500 hover:text-white hover:bg-orange-900 rounded animate-pulse"><ShieldAlert size={12} /></button>
+          )}
+          <button onClick={openExternal} title="Open in New Tab" className="p-1 text-blue-400 hover:text-white hover:bg-gray-800 rounded"><ExternalLink size={12} /></button>
           <button onClick={copyCredentials} title="Copy ID (admin)" className="p-1 text-yellow-500/80 hover:text-yellow-400 hover:bg-gray-800 rounded"><KeyRound size={12} /></button>
           <button onClick={() => setKey(k => k + 1)} title="Reload VNC" className="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded"><RefreshCw size={12} /></button>
           
@@ -174,7 +201,7 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
           <button onClick={onClose} title="Close Frame" className="p-1 text-red-800 hover:text-red-500 hover:bg-gray-800 rounded"><X size={12} /></button>
       </div>
 
-      {/* Control Pad - Translucent & With Top Toggle */}
+      {/* Control Pad */}
       {showPad && (
         <div 
             className="absolute bottom-4 right-4 z-40 animate-in fade-in zoom-in duration-200"
@@ -185,7 +212,6 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
             onWheel={stopPropagation}
         >
             <div className="bg-black/50 backdrop-blur-md p-1 rounded-xl border border-white/10 flex flex-col gap-1 shadow-2xl w-28">
-                {/* Top Toggle / Close Button */}
                 <button 
                   onClick={() => setShowPad(false)} 
                   className="w-full flex items-center justify-center p-1 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group cursor-pointer"
@@ -194,16 +220,13 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
                   <ChevronDown size={14} className="text-gray-400 group-hover:text-white" />
                 </button>
 
-                {/* Navigation Grid */}
                 <div className="grid grid-cols-3 gap-1 h-28">
-                  {/* Row 1 */}
                   <div className="flex items-center justify-center text-[9px] font-mono text-blue-400 bg-black/40 rounded border border-blue-900/30 select-none">
                     {Math.round(scale * 100)}%
                   </div>
                   <button onClick={() => handlePan(0, 1)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowUp size={16} /></button>
                   <button onClick={handleReset} title="Reset View" className="bg-red-900/30 hover:bg-red-600 text-white rounded flex items-center justify-center transition-colors active:bg-red-700"><RotateCcw size={12} /></button>
 
-                  {/* Row 2 */}
                   <button onClick={() => handlePan(1, 0)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowLeft size={16} /></button>
                   <button 
                     onClick={toggleDragMode} 
@@ -214,7 +237,6 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
                   </button>
                   <button onClick={() => handlePan(-1, 0)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowRight size={16} /></button>
 
-                  {/* Row 3 */}
                   <button onClick={() => handleZoom(0.05)} className="bg-blue-900/30 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><Plus size={16} /></button>
                   <button onClick={() => handlePan(0, -1)} className="bg-gray-800/50 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><ArrowDown size={16} /></button>
                   <button onClick={() => handleZoom(-0.05)} className="bg-blue-900/30 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors active:bg-blue-700"><Minus size={16} /></button>
@@ -253,7 +275,7 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
                 key={key}
                 src={frame.url}
                 className="w-full h-full border-0 block"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock"
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock allow-presentation allow-downloads allow-popups-to-escape-sandbox"
                 referrerPolicy="no-referrer"
                 loading="eager"
             />
@@ -273,10 +295,10 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
 // --- App Component ---
 const INITIAL_FRAMES: FrameConfig[] = [
-  { id: 1, url: 'https://172.16.8.91/remote-access', isMaximized: false },
-  { id: 2, url: 'https://172.16.8.92/remote-access', isMaximized: false },
-  { id: 3, url: 'https://172.16.8.93/remote-access', isMaximized: false },
-  { id: 4, url: 'https://172.16.8.94/remote-access', isMaximized: false },
+  { id: 1, url: 'http://172.16.8.91/remote-access', isMaximized: false },
+  { id: 2, url: 'http://172.16.8.92/remote-access', isMaximized: false },
+  { id: 3, url: 'http://172.16.8.93/remote-access', isMaximized: false },
+  { id: 4, url: 'http://172.16.8.94/remote-access', isMaximized: false },
 ];
 
 function App() {
@@ -322,20 +344,30 @@ function App() {
 
   const getGridStyle = () => {
     if (isAnyMaximized) return { gridTemplateColumns: '1fr', gridTemplateRows: '1fr' };
-    if (isPortrait && window.innerWidth < 768) {
-       return { 
-         gridTemplateColumns: '1fr', 
-         gridTemplateRows: `repeat(${frames.length}, 1fr)` 
-       };
+    
+    // Robust DeX/Responsive handling
+    if (isPortrait) {
+        // Portrait Mobile logic
+        return { 
+           gridTemplateColumns: '1fr', 
+           gridTemplateRows: `repeat(${frames.length}, 1fr)` 
+        };
     }
+
+    // Landscape / DeX logic
     if (frames.length === 1) return { gridTemplateColumns: '1fr', gridTemplateRows: '1fr' };
-    if (frames.length === 2) return { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr' };
+    
+    if (frames.length === 2) {
+        // Force 2 columns, 1 row (Side by Side)
+        return { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr' };
+    }
+    
+    // 3 or 4 frames -> 2x2 grid
     return { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' };
   };
 
   return (
     <div className="flex flex-col h-[100dvh] w-screen bg-black text-gray-100 font-sans overflow-hidden pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
-      {/* Hidden floating header removed as per request */}
       
       <main className="h-full w-full relative bg-black overflow-hidden">
         <div 
@@ -345,15 +377,16 @@ function App() {
           {frames.map((frame, index) => {
             let spanClass = "col-span-1 row-span-1";
             
-            // If there are exactly 3 frames, make the FIRST one span 2 rows (vertical stretch)
             const isPortraitMode = window.innerHeight > window.innerWidth;
             const isMobile = window.innerWidth < 768;
 
+            // Logic for 3 frames: Use Horizontal Span for the Last item
+            // This is more stable for DeX Landscape mode than vertical side strips.
             if (!isAnyMaximized && frames.length === 3) {
                if (isPortraitMode && isMobile) {
-                   spanClass = "col-span-1 row-span-1"; // Stacked vertically on mobile
-               } else if (index === 0) {
-                   spanClass = "col-span-1 row-span-2"; // Vertical strip on the left
+                   spanClass = "col-span-1 row-span-1"; // Stacked on mobile
+               } else if (index === 2) { // The last item
+                   spanClass = "col-span-2 row-span-1"; // Full width at the bottom
                }
             }
 
