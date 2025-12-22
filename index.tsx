@@ -402,8 +402,18 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
     <div className={`frame-container relative flex flex-col bg-gray-900 border border-gray-800 overflow-hidden ${frame.isMaximized ? "maximized" : spanClass}`}
          onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
       
+      {/* 
+        [Auto-Hide Toolbar Implementation] 
+        1. Invisible Trigger Area (h-4) at the top.
+        2. Toolbar is -translate-y-full (hidden above) by default.
+        3. peer-hover (on trigger) OR hover (on toolbar) -> translate-y-0.
+      */}
+      
+      {/* Trigger Zone (Invisible, top 16px) */}
+      <div className="absolute top-0 left-0 right-0 h-4 z-40 bg-transparent peer transition-none" />
+
       {/* Toolbar */}
-      <div className="toolbar absolute top-0 left-0 right-0 h-10 z-30 bg-gray-950/80 border-b border-gray-700 flex items-center px-2 gap-2 backdrop-blur-md">
+      <div className="toolbar absolute top-0 left-0 right-0 h-10 z-50 bg-gray-950/90 border-b border-gray-700 flex items-center px-2 gap-2 backdrop-blur-md transition-all duration-300 transform -translate-y-full opacity-0 peer-hover:translate-y-0 peer-hover:opacity-100 hover:translate-y-0 hover:opacity-100 focus-within:translate-y-0 focus-within:opacity-100">
           <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-lg cursor-default">
             {frame.id}
           </div>
