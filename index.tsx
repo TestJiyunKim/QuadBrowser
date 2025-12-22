@@ -396,11 +396,20 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
   };
   const onMouseUp = () => setIsDragging(false);
 
+  // Mouse Wheel Zoom Handler
+  const handleWheel = (e: React.WheelEvent) => {
+    if (isDragMode) {
+      // Zoom In if scrolling UP (deltaY < 0), Zoom Out if scrolling DOWN (deltaY > 0)
+      const delta = e.deltaY < 0 ? 0.05 : -0.05;
+      handleZoom(delta);
+    }
+  };
+
   if (isMaximizedMode && !frame.isMaximized) return null;
 
   return (
     <div className={`frame-container relative flex flex-col bg-gray-900 border border-gray-800 overflow-hidden ${frame.isMaximized ? "maximized" : spanClass}`}
-         onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
+         onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp} onWheel={handleWheel}>
       
       {/* 
         [Auto-Hide Toolbar Implementation] 
@@ -638,10 +647,13 @@ function App() {
           ))}
         </div>
 
-        {/* Floating Settings Button */}
+        {/* Trigger Zone for Settings Button */}
+        <div className="absolute bottom-0 left-0 w-24 h-24 z-40 bg-transparent peer" />
+
+        {/* Floating Settings Button - Auto-hide */}
         <button 
           onClick={() => setShowSettings(true)}
-          className="absolute bottom-6 left-6 z-50 bg-gray-800/80 hover:bg-blue-600 text-white p-3 rounded-full shadow-2xl border border-gray-600 backdrop-blur-md transition-all group"
+          className="absolute bottom-6 left-6 z-50 bg-gray-800/80 hover:bg-blue-600 text-white p-3 rounded-full shadow-2xl border border-gray-600 backdrop-blur-md transition-all duration-300 transform translate-y-10 opacity-0 peer-hover:translate-y-0 peer-hover:opacity-100 hover:translate-y-0 hover:opacity-100 group"
         >
           <Settings size={20} className="group-hover:rotate-45 transition-transform" />
         </button>
