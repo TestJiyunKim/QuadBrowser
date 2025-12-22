@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'dex-quad-v30';
+const CACHE_NAME = 'dex-quad-v33';
 const ASSETS = [
   './',
   './index.html',
@@ -8,7 +8,9 @@ const ASSETS = [
   'https://unpkg.com/@babel/standalone/babel.min.js',
   'https://cdn.tailwindcss.com',
   'https://esm.sh/react@18.3.1',
+  'https://esm.sh/react@18.3.1/',
   'https://esm.sh/react-dom@18.3.1',
+  'https://esm.sh/react-dom@18.3.1/',
   'https://esm.sh/react-dom@18.3.1/client',
   'https://esm.sh/lucide-react@0.292.0?external=react,react-dom',
   'https://esm.sh/@google/genai@^1.34.0'
@@ -19,13 +21,12 @@ self.addEventListener('install', (e) => {
     caches.open(CACHE_NAME).then(cache => {
       return Promise.all(
         ASSETS.map(url => {
-          return fetch(url, { cache: 'no-cache' })
+          return fetch(url, { cache: 'reload' })
             .then(res => {
               if (res.ok) return cache.put(url, res);
-              console.warn('Skipping cache for:', url, res.status);
               return null;
             })
-            .catch(err => console.warn('Cache fail:', url, err));
+            .catch(err => console.error('Cache error:', url, err));
         })
       );
     })
@@ -41,19 +42,22 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
+      fetch(e.request).catch(() => caches.match('./index.html'))
     );
     return;
   }
   
   e.respondWith(
     caches.match(e.request).then(cached => {
-      return cached || fetch(e.request).then(response => {
-        if (response.status === 200) {
+      if (cached) return cached;
+      return fetch(e.request).then(response => {
+        if (response.status === 200 && e.request.method === 'GET') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
         }
         return response;
+      }).catch(err => {
+        return new Response('', { status: 404 });
       });
     })
   );

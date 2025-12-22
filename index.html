@@ -12,85 +12,41 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <!-- Babel Standalone for in-browser TSX compilation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <style>
-      html, body {
-        height: 100%;
-        height: 100dvh;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        background-color: #000;
-      }
-      #root {
-        height: 100%;
-        width: 100%;
-      }
-      #error-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.95);
-        color: #ff5555;
-        z-index: 9999;
-        padding: 20px;
-        font-family: monospace;
-        font-size: 14px;
-        white-space: pre-wrap;
-        overflow: auto;
-      }
-      #loading-text {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: #666;
-        font-family: sans-serif;
-        font-size: 14px;
-        pointer-events: none;
-        text-align: center;
-      }
+      /* --- Safety Net CSS (For Offline/Tailwind-fail) --- */
+      html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0; background: #000; overflow: hidden; color: #fff; }
+      .grid-container { display: grid; height: 100%; width: 100%; background: #111; gap: 1px; }
+      .frame-container { position: relative; display: flex; flex-direction: column; background: #0a0a0a; overflow: hidden; }
+      .col-span-1 { grid-column: span 1; }
+      .col-span-2 { grid-column: span 2; }
+      .row-span-1 { grid-row: span 1; }
+      .row-span-2 { grid-row: span 2; }
+      .maximized { position: absolute !important; inset: 0 !important; z-index: 50 !important; }
+      
+      /* Hide toolbar by default, show on hover */
+      .toolbar { opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+      .frame-container:hover .toolbar { opacity: 1; pointer-events: auto; }
+      
+      #loading-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #666; font-family: sans-serif; text-align: center; }
+      #error-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); color: #f55; z-index: 9999; padding: 20px; font-family: monospace; white-space: pre-wrap; overflow: auto; }
     </style>
+
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
-      
-      // Global error handler
-      window.onerror = function(msg, url, lineNo, columnNo, error) {
-        if (msg.includes('ServiceWorker') || msg.includes('scriptURL')) return false;
-        showError(`[Runtime Error] ${msg}\n${url}:${lineNo}`);
-        return false;
-      };
-      
-      // Capture phase error handler for resource loading failures
-      window.addEventListener('error', function(event) {
-        if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
-          showError(`[Resource Error] Failed to load: ${event.target.src || event.target.href}`);
-        }
-      }, true);
-      
-      window.addEventListener('unhandledrejection', function(event) {
-        if (event.reason && event.reason.toString().includes('ServiceWorker')) return;
-        showError(`[Promise Error] ${event.reason}`);
-      });
-
       function showError(text) {
         const overlay = document.getElementById('error-overlay');
-        const loader = document.getElementById('loading-text');
-        if (loader) loader.style.display = 'none';
-        if (overlay) {
-          overlay.style.display = 'block';
-          overlay.innerText += text + '\n\n';
-        }
+        if (overlay) { overlay.style.display = 'block'; overlay.innerText += text + '\n\n'; }
       }
+      window.onerror = (m, u, l) => { 
+        if (!m.includes('ServiceWorker')) showError(`[Runtime Error] ${m}\n${u}:${l}`); 
+        return false; 
+      };
     </script>
-  <script type="importmap">
+
+    <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@18.3.1",
@@ -103,45 +59,23 @@
   }
 }
 </script>
-</head>
+  </head>
   <body class="text-white select-none">
     <div id="loading-text">
-      Loading DeX QuadBrowser (Stable v30)...<br/>
+      Loading DeX QuadBrowser (v33)...<br/>
       <span style="font-size:10px; opacity:0.5">Initializing Application...</span>
     </div>
     <div id="root"></div>
     <div id="error-overlay"></div>
     <script>
-      setTimeout(() => {
-        const root = document.getElementById('root');
-        if (root && root.childElementCount === 0) {
-           const loader = document.getElementById('loading-text');
-           if (loader && loader.style.display !== 'none') {
-             loader.innerHTML = `<span style="color:#ff5555">App failed to load.</span><br/><br/>If you are offline, ensure the Service Worker is installed.<br/>Check console for network errors.`;
-           }
-        }
-      }, 15000);
-
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          try {
-            if (window.location.protocol !== 'http:' && window.location.protocol !== 'https:') {
-               console.warn('Skipping SW: unsupported protocol ' + window.location.protocol);
-               return;
-            }
-            let swUrl = './sw.js';
-            try { swUrl = new URL('sw.js', window.location.href).href; } catch (e) {}
-            
-            navigator.serviceWorker.register(swUrl)
-              .then(reg => {
-                if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-              })
-              .catch(err => console.warn('SW Registration Suppressed:', err));
-          } catch(e) { console.error('SW Setup Error:', e); }
+          navigator.serviceWorker.register('./sw.js').then(reg => {
+            if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }).catch(err => console.warn('SW Registration Fail:', err));
         });
       }
     </script>
-    <!-- Use Babel to compile TSX on the fly. data-type="module" preserves ESM imports -->
     <script type="text/babel" data-type="module" src="./index.tsx" data-presets="react,typescript"></script>
   </body>
 </html>
