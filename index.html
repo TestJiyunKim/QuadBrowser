@@ -16,34 +16,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-      /* --- Safety Net CSS (For Offline/Tailwind-fail) --- */
-      html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0; background: #000; overflow: hidden; color: #fff; }
-      .grid-container { display: grid; height: 100%; width: 100%; background: #111; gap: 1px; }
+      html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0; background: #000; overflow: hidden; }
       .frame-container { position: relative; display: flex; flex-direction: column; background: #0a0a0a; overflow: hidden; }
-      .col-span-1 { grid-column: span 1; }
-      .col-span-2 { grid-column: span 2; }
-      .row-span-1 { grid-row: span 1; }
-      .row-span-2 { grid-row: span 2; }
       .maximized { position: absolute !important; inset: 0 !important; z-index: 50 !important; }
       
-      /* Hide toolbar by default, show on hover */
-      .toolbar { opacity: 0; pointer-events: none; transition: opacity 0.2s; }
-      .frame-container:hover .toolbar { opacity: 1; pointer-events: auto; }
+      /* 툴바 상시 노출 제어 */
+      .toolbar { opacity: 0.6; transition: opacity 0.3s; }
+      .frame-container:hover .toolbar { opacity: 1; }
       
-      #loading-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #666; font-family: sans-serif; text-align: center; }
-      #error-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); color: #f55; z-index: 9999; padding: 20px; font-family: monospace; white-space: pre-wrap; overflow: auto; }
+      #loading-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #444; font-family: sans-serif; text-align: center; }
     </style>
 
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
-      function showError(text) {
-        const overlay = document.getElementById('error-overlay');
-        if (overlay) { overlay.style.display = 'block'; overlay.innerText += text + '\n\n'; }
-      }
-      window.onerror = (m, u, l) => { 
-        if (!m.includes('ServiceWorker')) showError(`[Runtime Error] ${m}\n${u}:${l}`); 
-        return false; 
-      };
     </script>
 
     <script type="importmap">
@@ -60,22 +45,11 @@
 }
 </script>
   </head>
-  <body class="text-white select-none">
+  <body class="text-white select-none bg-black">
     <div id="loading-text">
-      Loading DeX QuadBrowser (v33)...<br/>
-      <span style="font-size:10px; opacity:0.5">Initializing Application...</span>
+      Loading DeX QuadBrowser (v41)...
     </div>
     <div id="root"></div>
-    <div id="error-overlay"></div>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').then(reg => {
-            if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-          }).catch(err => console.warn('SW Registration Fail:', err));
-        });
-      }
-    </script>
     <script type="text/babel" data-type="module" src="./index.tsx" data-presets="react,typescript"></script>
   </body>
 </html>

@@ -1,21 +1,263 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, KeyRound, Monitor, MousePointer2, Gamepad2, Move, ChevronDown, ExternalLink, ShieldAlert } from 'lucide-react';
+import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Gamepad2, Move, ChevronDown, ExternalLink, ShieldAlert, Lock, Unlock, HelpCircle, Layers, Globe, Zap, Settings, Check, AlertTriangle, Clock, Activity, Stethoscope, Wifi, WifiOff, Smartphone } from 'lucide-react';
 
 // --- Types ---
+type RenderMode = 'direct' | 'magic' | 'popup';
+
+interface AppSettings {
+  defaultRenderMode: RenderMode;
+}
+
 interface FrameConfig {
   id: number;
-  url: string;
-  title?: string;
+  protocol: 'https://'; // Strictly HTTPS
+  url: string; 
+  renderMode: RenderMode;
   isMaximized?: boolean;
 }
+
+// --- Diagnostic Helper ---
+const checkConnection = async (url: string): Promise<{ status: 'ok' | 'error' | 'blocked', msg: string, code?: number }> => {
+  if (!url || url === 'about:blank') return { status: 'ok', msg: 'No URL' };
+  
+  const target = url.startsWith('http') ? url : `https://${url}`;
+  
+  try {
+    // Attempt a no-cors request to check reachability (opaque response means server is up)
+    await fetch(target, { mode: 'no-cors', cache: 'no-store' });
+    
+    // If we get here, DNS and TCP handshake worked.
+    return { status: 'ok', msg: 'Server Reachable' };
+  } catch (e) {
+    // Network error (DNS, Connection Refused, SSL Error)
+    return { status: 'error', msg: 'Unreachable / SSL Error' };
+  }
+};
+
+// --- Troubleshoot Modal Component ---
+interface TroubleshootModalProps {
+  frame: FrameConfig;
+  onClose: () => void;
+  onUpdateFrame: (id: number, updates: Partial<FrameConfig>) => void;
+}
+
+const TroubleshootModal: React.FC<TroubleshootModalProps> = ({ frame, onClose, onUpdateFrame }) => {
+  const [status, setStatus] = useState<'checking' | 'ok' | 'error'>('checking');
+  const [diagMsg, setDiagMsg] = useState('');
+
+  useEffect(() => {
+    const runDiag = async () => {
+      setStatus('checking');
+      const res = await checkConnection(frame.url);
+      setStatus(res.status === 'ok' ? 'ok' : 'error');
+      setDiagMsg(res.msg);
+    };
+    runDiag();
+  }, [frame.url]);
+
+  const rawUrl = frame.url.startsWith('http') ? frame.url : `https://${frame.url}`;
+
+  return (
+    <div className="absolute inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+      <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-sm w-full p-5 relative">
+        <button onClick={onClose} className="absolute top-3 right-3 text-gray-500 hover:text-white"><X size={20}/></button>
+        
+        <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
+          <Stethoscope size={20} className="text-blue-400"/> 연결 진단 (CH {frame.id})
+        </h2>
+
+        <div className="bg-gray-800 rounded p-3 mb-4 font-mono text-xs">
+          <div className="text-gray-400 mb-1">Target URL:</div>
+          <div className="text-blue-300 break-all">{rawUrl}</div>
+        </div>
+
+        {/* Diagnosis Result */}
+        <div className={`p-3 rounded border mb-4 flex items-center gap-3 ${status === 'ok' ? 'bg-green-900/20 border-green-700/50' : status === 'checking' ? 'bg-blue-900/20 border-blue-700/50' : 'bg-red-900/20 border-red-700/50'}`}>
+          {status === 'checking' && <RefreshCw size={20} className="animate-spin text-blue-400"/>}
+          {status === 'ok' && <Wifi size={20} className="text-green-400"/>}
+          {status === 'error' && <WifiOff size={20} className="text-red-400"/>}
+          
+          <div>
+            <div className={`font-bold text-sm ${status === 'ok' ? 'text-green-400' : status === 'error' ? 'text-red-400' : 'text-blue-400'}`}>
+              {status === 'checking' ? '진단 중...' : status === 'ok' ? '서버 연결 성공' : '서버 연결 실패'}
+            </div>
+            <div className="text-[10px] text-gray-400">{diagMsg}</div>
+          </div>
+        </div>
+
+        {/* Recommendations based on status */}
+        <div className="space-y-3">
+          {status === 'error' && (
+            <div className="text-xs text-gray-300">
+              <p className="mb-1 text-red-300">⚠️ <b>ERR_ADDRESS_UNREACHABLE</b> 또는 인증서 오류</p>
+              <button 
+                onClick={() => window.open(rawUrl, '_blank')}
+                className="w-full bg-blue-700 hover:bg-blue-600 text-white py-2 rounded flex items-center justify-center gap-2 font-bold mt-2"
+              >
+                <ExternalLink size={14} /> 새 탭에서 열어 인증서 수락
+              </button>
+              <p className="text-[10px] text-gray-500 mt-1 text-center">새 탭: "고급 &gt; 안전하지 않음으로 이동" 클릭</p>
+            </div>
+          )}
+
+          {status === 'ok' && (
+             <div className="text-xs text-gray-300">
+               <div className="bg-orange-900/20 border border-orange-700/30 p-2 rounded mb-3">
+                 <p className="font-bold text-orange-400 mb-1">서버는 응답하지만 화면이 안 보이나요?</p>
+                 <p className="text-[10px] text-gray-400">보안 정책(X-Frame-Options) 차단됨. (Frame 4 등)</p>
+               </div>
+
+               <div className="grid grid-cols-2 gap-2">
+                 <button 
+                   onClick={() => { onUpdateFrame(frame.id, { renderMode: 'popup' }); onClose(); }}
+                   className="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded flex flex-col items-center justify-center gap-1 text-[10px]"
+                 >
+                   <ExternalLink size={14} className="text-orange-400"/>
+                   <span>팝업 모드 (기본)</span>
+                 </button>
+                 
+                 <div className="bg-gray-800 p-2 rounded text-[10px] text-gray-400 flex flex-col justify-center">
+                   <div className="flex items-center gap-1 text-green-400 font-bold mb-0.5">
+                     <Smartphone size={10} /> Kiwi Browser
+                   </div>
+                   <span>확장 프로그램 사용시<br/><b>Direct 모드</b> 가능</span>
+                 </div>
+               </div>
+             </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+// --- Settings Modal Component ---
+interface SettingsModalProps {
+  settings: AppSettings;
+  frames: FrameConfig[];
+  onUpdateSettings: (newSettings: AppSettings) => void;
+  onClose: () => void;
+}
+
+const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdateSettings, onClose }) => {
+  const [netStatus, setNetStatus] = useState<Record<number, string>>({});
+  const [checking, setChecking] = useState(false);
+
+  const runSystemCheck = async () => {
+    setChecking(true);
+    const results: Record<number, string> = {};
+    
+    // Parallel check
+    await Promise.all(frames.map(async (f) => {
+      if (!f.url) {
+        results[f.id] = "Empty";
+        return;
+      }
+      const res = await checkConnection(f.url);
+      results[f.id] = res.status === 'ok' ? 'Online' : 'Offline/Error';
+    }));
+
+    setNetStatus(results);
+    setChecking(false);
+  };
+
+  return (
+    <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Settings size={20} /> System Settings
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={20}/></button>
+        </div>
+
+        <div className="space-y-6">
+          {/* Pro Tip */}
+          <div className="bg-purple-900/20 p-3 rounded border border-purple-500/30">
+             <div className="flex items-center gap-2 mb-1 text-purple-400 font-bold text-xs">
+               <Zap size={12} /> Pro Tip: Frame Blocking 해결
+             </div>
+             <p className="text-[11px] text-gray-400 leading-relaxed">
+               <b>Kiwi Browser</b> 설치 후 <b>"Ignore X-Frame-Options"</b> 확장 프로그램을 추가하면 Direct 모드에서도 모든 화면이 정상 작동합니다.
+             </p>
+          </div>
+
+          {/* Network Dashboard */}
+          <div>
+             <div className="flex justify-between items-center mb-2">
+               <label className="text-gray-200 font-bold text-sm flex items-center gap-2">
+                 <Activity size={14} /> Network Status
+               </label>
+               <button 
+                 onClick={runSystemCheck}
+                 disabled={checking}
+                 className="bg-gray-700 hover:bg-gray-600 text-white text-[10px] px-2 py-1 rounded flex items-center gap-1"
+               >
+                 {checking ? <RefreshCw size={10} className="animate-spin"/> : <Check size={10}/>}
+                 Scan All
+               </button>
+             </div>
+             
+             <div className="grid grid-cols-2 gap-2">
+               {frames.map(f => (
+                 <div key={f.id} className="bg-gray-800 p-2 rounded border border-gray-700 flex justify-between items-center">
+                   <div className="flex items-center gap-2">
+                     <span className="bg-blue-900 text-blue-200 text-[10px] font-bold px-1.5 rounded">{f.id}</span>
+                     <span className="text-[10px] text-gray-400 truncate max-w-[80px]">{f.url || 'Empty'}</span>
+                   </div>
+                   <div className="text-[10px] font-bold">
+                      {netStatus[f.id] === 'Online' && <span className="text-green-400">OK</span>}
+                      {netStatus[f.id] === 'Offline/Error' && <span className="text-red-400">ERR</span>}
+                      {!netStatus[f.id] && <span className="text-gray-600">-</span>}
+                   </div>
+                 </div>
+               ))}
+             </div>
+          </div>
+
+          {/* Default Render Mode */}
+          <div>
+            <label className="text-gray-200 font-bold text-sm block mb-2">기본 렌더링 모드</label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['direct', 'magic', 'popup'] as RenderMode[]).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => onUpdateSettings({ ...settings, defaultRenderMode: mode })}
+                  className={`py-2 px-1 rounded border text-xs font-bold uppercase flex flex-col items-center gap-1 ${
+                    settings.defaultRenderMode === mode 
+                      ? 'bg-blue-900/40 border-blue-500 text-blue-400' 
+                      : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'
+                  }`}
+                >
+                  {mode === 'direct' && <Globe size={14} />}
+                  {mode === 'magic' && <Zap size={14} />}
+                  {mode === 'popup' && <ExternalLink size={14} />}
+                  {mode}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-gray-700 flex justify-end">
+          <button onClick={onClose} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // --- BrowserFrame Component ---
 interface BrowserFrameProps {
   frame: FrameConfig;
   spanClass: string;
-  onUpdateUrl: (id: number, url: string) => void;
+  settings: AppSettings;
+  onUpdateFrame: (id: number, updates: Partial<FrameConfig>) => void;
   onMaximize: (id: number) => void;
   onRestore: () => void;
   onClose: () => void;
@@ -25,7 +267,8 @@ interface BrowserFrameProps {
 const BrowserFrame: React.FC<BrowserFrameProps> = ({
   frame,
   spanClass,
-  onUpdateUrl,
+  settings,
+  onUpdateFrame,
   onMaximize,
   onRestore,
   onClose,
@@ -36,9 +279,11 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
   const [scale, setScale] = useState(1.0);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [showPad, setShowPad] = useState(false);
-  
   const [isDragMode, setIsDragMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showModeMenu, setShowModeMenu] = useState(false);
+  const [showTroubleshoot, setShowTroubleshoot] = useState(false);
+  
   const dragStartRef = useRef({ x: 0, y: 0 });
   const positionRef = useRef({ x: 0, y: 0 });
 
@@ -47,55 +292,53 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
     setKey(prev => prev + 1);
     setScale(1.0);
     setPosition({ x: 0, y: 0 });
-    setShowPad(false);
     setIsDragMode(false);
-  }, [frame.url]);
+    setShowModeMenu(false);
+    setShowTroubleshoot(false);
+  }, [frame.url, frame.protocol, frame.renderMode]);
 
   useEffect(() => {
     positionRef.current = position;
   }, [position]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    let finalUrl = inputUrl.trim();
-    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-        const isIP = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?$/.test(finalUrl) || finalUrl.includes('localhost');
-        finalUrl = `${isIP ? 'http' : 'https'}://${finalUrl}`;
-    }
-    setInputUrl(finalUrl);
-    onUpdateUrl(frame.id, finalUrl);
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    if (val.startsWith('http://')) val = val.replace('http://', '');
+    else if (val.startsWith('https://')) val = val.replace('https://', '');
+    setInputUrl(val);
   };
 
-  const openExternal = () => window.open(inputUrl, '_blank');
+  const handleApplyUrl = useCallback((e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    onUpdateFrame(frame.id, { url: inputUrl.trim(), protocol: 'https://' });
+    setKey(k => k + 1);
+  }, [inputUrl, frame.id, onUpdateFrame]);
+
+  const getDisplayUrl = () => {
+    if (!frame.url || frame.url === 'about:blank') return 'about:blank';
+    const rawUrl = `https://${frame.url}`;
+    if (frame.renderMode === 'magic') {
+      return `https://translate.google.com/translate?sl=auto&tl=ko&u=${encodeURIComponent(rawUrl)}`;
+    }
+    return rawUrl;
+  };
+
+  const displayUrl = getDisplayUrl();
+  const rawUrl = `https://${frame.url}`;
   
-  const openCertFix = () => {
-    const win = window.open(inputUrl, '_blank');
-    if (win) {
-        setTimeout(() => alert("사설 인증서(HTTPS 에러)를 허용하신 후, 이 창에서 새로고침 버튼을 눌러주세요."), 500);
-    }
+  const openExternal = () => {
+    if (!frame.url) return;
+    window.open(rawUrl, '_blank', 'noopener,noreferrer');
   };
-
-  const handleZoom = (delta: number) => {
-    setScale(prev => parseFloat(Math.max(0.1, Math.min(prev + delta, 5.0)).toFixed(3)));
-  };
-
+  
+  const handleZoom = (delta: number) => setScale(prev => parseFloat(Math.max(0.1, Math.min(prev + delta, 5.0)).toFixed(3)));
   const handlePan = (dx: number, dy: number) => {
-    const step = 25 / scale;
+    const step = 30 / scale;
     setPosition(prev => ({ x: prev.x + dx * step, y: prev.y + dy * step }));
   };
+  const handleReset = () => { setScale(1.0); setPosition({ x: 0, y: 0 }); setIsDragMode(false); };
 
-  const handleReset = () => {
-    setScale(1.0);
-    setPosition({ x: 0, y: 0 });
-    setIsDragMode(false);
-  };
-
-  const onMouseDown = (e: React.MouseEvent) => {
-    if (!isDragMode) return;
-    setIsDragging(true);
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-  };
-
+  const onMouseDown = (e: React.MouseEvent) => { if (isDragMode) { setIsDragging(true); dragStartRef.current = { x: e.clientX, y: e.clientY }; } };
   const onMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !isDragMode) return;
     const dx = e.clientX - dragStartRef.current.x;
@@ -103,110 +346,167 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
     setPosition({ x: positionRef.current.x + dx, y: positionRef.current.y + dy });
     dragStartRef.current = { x: e.clientX, y: e.clientY };
   };
-
   const onMouseUp = () => setIsDragging(false);
-
-  const onWheel = (e: React.WheelEvent) => {
-    if (isDragMode) {
-      e.preventDefault(); 
-      e.stopPropagation();
-      handleZoom(e.deltaY < 0 ? 0.05 : -0.05);
-    }
-  };
-
-  const toggleDragMode = () => {
-    setIsDragMode(prev => !prev);
-    setIsDragging(false);
-  };
-
-  const copyCredentials = () => navigator.clipboard.writeText("admin");
 
   if (isMaximizedMode && !frame.isMaximized) return null;
 
-  const containerClasses = `frame-container ${frame.isMaximized ? "maximized" : spanClass}`;
-  const isInternalIp = inputUrl.includes('192.168.') || inputUrl.includes('172.') || inputUrl.includes('10.') || inputUrl.includes('localhost');
-
   return (
-    <div className={`relative flex flex-col bg-gray-900 border border-gray-800 overflow-hidden ${containerClasses}`}>
+    <div className={`frame-container relative flex flex-col bg-gray-900 border border-gray-800 overflow-hidden ${frame.isMaximized ? "maximized" : spanClass}`}
+         onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp}>
       
-      {/* Toolbar (opacity-0 by default, hover:opacity-100 via standard CSS if Tailwind fails) */}
-      <div className="toolbar absolute top-0 left-0 right-0 h-9 z-30 bg-black/95 flex items-center px-1 gap-1 border-b border-gray-700 shadow-xl backdrop-blur-sm transition-opacity">
-          <div className="w-5 h-5 bg-blue-700 rounded flex items-center justify-center text-[10px] font-bold text-white shrink-0">{frame.id}</div>
+      {/* Toolbar */}
+      <div className="toolbar absolute top-0 left-0 right-0 h-10 z-30 bg-gray-950/80 border-b border-gray-700 flex items-center px-2 gap-2 backdrop-blur-md">
+          <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-lg cursor-default">
+            {frame.id}
+          </div>
           
-          <form onSubmit={handleSubmit} className="flex-grow min-w-[50px]">
-            <input
-              type="text"
-              value={inputUrl}
-              onChange={(e) => setInputUrl(e.target.value)}
-              className="w-full bg-transparent text-[10px] text-gray-300 border-none focus:ring-0 px-1 outline-none font-mono"
-            />
-          </form>
-
-          <div className="flex items-center gap-0.5 bg-gray-800/50 rounded p-0.5">
-            <button onClick={() => setShowPad(!showPad)} title="Control Pad" className={`p-1 rounded ${showPad ? 'text-blue-400 bg-gray-700' : 'text-gray-400'}`}>
-              <Gamepad2 size={12} />
-            </button>
-            <div className="w-px h-3 bg-gray-700 mx-0.5"></div>
-            <button onClick={() => handleZoom(-0.05)} className="p-1 text-gray-400 hover:text-white"><Minus size={12} /></button>
-            <span className="text-[9px] font-mono text-blue-400 w-8 text-center">{Math.round(scale * 100)}%</span>
-            <button onClick={() => handleZoom(0.05)} className="p-1 text-gray-400 hover:text-white"><Plus size={12} /></button>
-            <button onClick={handleReset} className="p-1 text-green-500/80 hover:text-green-400"><Monitor size={12} /></button>
+          <div className="relative">
+             <button 
+                onClick={() => setShowModeMenu(!showModeMenu)}
+                className={`h-7 px-2 rounded flex items-center gap-1 text-[10px] font-bold border ${
+                  frame.renderMode === 'magic' ? 'border-purple-500 text-purple-400 bg-purple-900/20' : 
+                  frame.renderMode === 'popup' ? 'border-orange-500 text-orange-400 bg-orange-900/20' : 
+                  'border-gray-600 text-gray-400 bg-gray-800'
+                }`}
+                title="렌더링 모드 변경"
+             >
+                {frame.renderMode === 'direct' && <Globe size={12}/>}
+                {frame.renderMode === 'magic' && <Zap size={12}/>}
+                {frame.renderMode === 'popup' && <ExternalLink size={12}/>}
+                <span className="hidden sm:inline uppercase">{frame.renderMode}</span>
+             </button>
+             
+             {showModeMenu && (
+               <div className="absolute top-8 left-0 z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-xl w-32 flex flex-col overflow-hidden text-xs">
+                 <button onClick={() => { onUpdateFrame(frame.id, { renderMode: 'direct' }); setShowModeMenu(false); }} className="px-3 py-2 text-left hover:bg-gray-800 flex items-center gap-2 text-gray-300">
+                    <Globe size={14} /> Direct
+                 </button>
+                 <button onClick={() => { onUpdateFrame(frame.id, { renderMode: 'magic' }); setShowModeMenu(false); }} className="px-3 py-2 text-left hover:bg-gray-800 flex items-center gap-2 text-purple-400">
+                    <Zap size={14} /> Magic (Google)
+                 </button>
+                 <button onClick={() => { onUpdateFrame(frame.id, { renderMode: 'popup' }); setShowModeMenu(false); }} className="px-3 py-2 text-left hover:bg-gray-800 flex items-center gap-2 text-orange-400">
+                    <ExternalLink size={14} /> Popup Only
+                 </button>
+               </div>
+             )}
           </div>
 
-          <div className="h-4 w-px bg-gray-700 mx-1"></div>
-          
-          {isInternalIp && (
-             <button onClick={openCertFix} className="p-1 text-orange-500 animate-pulse"><ShieldAlert size={12} /></button>
-          )}
-          <button onClick={openExternal} className="p-1 text-blue-400"><ExternalLink size={12} /></button>
-          <button onClick={copyCredentials} className="p-1 text-yellow-500/80"><KeyRound size={12} /></button>
-          <button onClick={() => setKey(k => k + 1)} className="p-1 text-gray-400"><RefreshCw size={12} /></button>
-          
-          {frame.isMaximized ? (
-            <button onClick={onRestore} className="p-1 text-blue-400"><Minimize2 size={12} /></button>
-          ) : (
-            <button onClick={() => onMaximize(frame.id)} className="p-1 text-gray-400"><Maximize2 size={12} /></button>
-          )}
-          <button onClick={onClose} className="p-1 text-red-800 hover:text-red-500"><X size={12} /></button>
+          <div className="flex-grow flex items-center bg-black/40 rounded border border-gray-700 focus-within:border-blue-500 transition-colors h-7">
+            <div 
+              className="h-full px-2 text-[10px] font-bold border-r border-gray-700 flex items-center gap-1 text-green-400 cursor-default"
+              title="HTTPS Secured (Enforced)"
+            >
+              <Lock size={10} />
+            </div>
+            
+            <form onSubmit={handleApplyUrl} className="flex-grow h-full flex">
+              <input
+                type="text"
+                value={inputUrl === 'about:blank' ? '' : inputUrl}
+                onChange={handleUrlChange}
+                className="w-full bg-transparent text-[11px] text-gray-200 px-2 outline-none font-mono h-full"
+                placeholder="domain.com (HTTPS)"
+              />
+              <button type="submit" className="hidden">Go</button>
+            </form>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => setShowTroubleshoot(true)} 
+              title="연결 문제 해결" 
+              className="p-1.5 text-yellow-500 hover:text-white hover:bg-gray-800 rounded animate-pulse"
+            >
+              <Stethoscope size={14} />
+            </button>
+            <button onClick={() => setKey(k => k + 1)} title="새로고침" className="p-1.5 text-gray-300 hover:text-white hover:bg-gray-800 rounded">
+              <RefreshCw size={14} />
+            </button>
+            <button onClick={() => setShowPad(!showPad)} title="조작 패드" className={`p-1.5 rounded transition-colors ${showPad ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800'}`}>
+              <Gamepad2 size={14} />
+            </button>
+            
+            <div className="w-px h-4 bg-gray-700 mx-1"></div>
+            
+            {frame.isMaximized ? (
+              <button onClick={onRestore} className="p-1.5 text-blue-400"><Minimize2 size={14} /></button>
+            ) : (
+              <button onClick={() => onMaximize(frame.id)} className="p-1.5 text-gray-400"><Maximize2 size={14} /></button>
+            )}
+            <button onClick={onClose} className="p-1.5 text-red-500 hover:bg-red-900/30 rounded"><X size={14} /></button>
+          </div>
       </div>
 
+      {/* Troubleshoot Modal */}
+      {showTroubleshoot && (
+        <TroubleshootModal 
+          frame={frame} 
+          onClose={() => setShowTroubleshoot(false)} 
+          onUpdateFrame={onUpdateFrame}
+        />
+      )}
+
+      {/* Control Pad UI */}
       {showPad && (
-        <div className="absolute bottom-4 right-4 z-40 bg-black/50 backdrop-blur-md p-1 rounded-xl border border-white/10 flex flex-col gap-1 shadow-2xl w-28" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setShowPad(false)} className="w-full flex items-center justify-center p-1 bg-white/5 hover:bg-white/10 rounded-lg"><ChevronDown size={14} /></button>
-            <div className="grid grid-cols-3 gap-1 h-28">
-              <div className="flex items-center justify-center text-[9px] font-mono text-blue-400 bg-black/40 rounded border border-blue-900/30">{Math.round(scale * 100)}%</div>
-              <button onClick={() => handlePan(0, 1)} className="bg-gray-800/50 hover:bg-blue-600 rounded flex items-center justify-center"><ArrowUp size={16} /></button>
-              <button onClick={handleReset} className="bg-red-900/30 hover:bg-red-600 rounded flex items-center justify-center"><RotateCcw size={12} /></button>
-              <button onClick={() => handlePan(1, 0)} className="bg-gray-800/50 hover:bg-blue-600 rounded flex items-center justify-center"><ArrowLeft size={16} /></button>
-              <button onClick={toggleDragMode} className={`rounded flex items-center justify-center ${isDragMode ? 'bg-blue-600' : 'bg-gray-800/50'}`}><Move size={12} /></button>
-              <button onClick={() => handlePan(-1, 0)} className="bg-gray-800/50 hover:bg-blue-600 rounded flex items-center justify-center"><ArrowRight size={16} /></button>
-              <button onClick={() => handleZoom(0.05)} className="bg-blue-900/30 hover:bg-blue-600 rounded flex items-center justify-center"><Plus size={16} /></button>
-              <button onClick={() => handlePan(0, -1)} className="bg-gray-800/50 hover:bg-blue-600 rounded flex items-center justify-center"><ArrowDown size={16} /></button>
-              <button onClick={() => handleZoom(-0.05)} className="bg-blue-900/30 hover:bg-blue-600 rounded flex items-center justify-center"><Minus size={16} /></button>
+        <div className="absolute bottom-4 right-4 z-40 bg-gray-900/95 backdrop-blur-lg p-2 rounded-2xl border border-gray-700 shadow-2xl w-32" onClick={e => e.stopPropagation()}>
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="col-span-3 flex justify-between items-center mb-1 text-[9px] font-bold text-blue-400 px-1">
+                <span>ZOOM {Math.round(scale * 100)}%</span>
+                <button onClick={() => setShowPad(false)}><ChevronDown size={12}/></button>
+              </div>
+              <button onClick={() => handleZoom(0.05)} className="bg-gray-800 hover:bg-blue-600 rounded-lg h-9 flex items-center justify-center"><Plus size={16} /></button>
+              <button onClick={() => handlePan(0, 1)} className="bg-gray-800 hover:bg-blue-600 rounded-lg h-9 flex items-center justify-center"><ArrowUp size={16} /></button>
+              <button onClick={() => handleZoom(-0.05)} className="bg-gray-800 hover:bg-blue-600 rounded-lg h-9 flex items-center justify-center"><Minus size={16} /></button>
+              <button onClick={() => handlePan(1, 0)} className="bg-gray-800 hover:bg-blue-600 rounded-lg h-9 flex items-center justify-center"><ArrowLeft size={16} /></button>
+              <button onClick={() => setIsDragMode(!isDragMode)} className={`rounded-lg h-9 flex items-center justify-center ${isDragMode ? 'bg-blue-600' : 'bg-gray-800'}`}><Move size={14} /></button>
+              <button onClick={() => handlePan(-1, 0)} className="bg-gray-800 hover:bg-blue-600 rounded-lg h-9 flex items-center justify-center"><ArrowRight size={16} /></button>
+              <button onClick={handleReset} className="col-span-3 bg-red-900/40 hover:bg-red-600 text-red-200 rounded-lg h-8 text-[10px] font-bold mt-1">RESET VIEW</button>
             </div>
         </div>
       )}
 
-      <div className="flex-grow relative bg-gray-950 overflow-hidden flex items-center justify-center">
+      {/* Main Viewport */}
+      <div className="flex-grow relative bg-gray-950 overflow-hidden flex items-center justify-center" 
+           onMouseDown={onMouseDown}>
+        
         {isDragMode && (
-          <div className="absolute inset-0 z-20 cursor-move touch-none" onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp} onWheel={onWheel}>
-            <div className="absolute top-2 right-2 bg-blue-600/80 text-white text-[9px] px-2 py-1 rounded shadow-lg">DRAG & ZOOM ON</div>
-          </div>
+          <div className="absolute inset-0 z-20 cursor-move bg-blue-500/5 border-2 border-dashed border-blue-500/20"></div>
         )}
 
         {frame.url && frame.url !== 'about:blank' ? (
-          <div className="origin-center w-full h-full" style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})` }}>
-            <iframe
-                key={key}
-                src={frame.url}
-                className="w-full h-full border-0 block"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock allow-presentation allow-downloads allow-popups-to-escape-sandbox"
-                referrerPolicy="no-referrer"
-            />
-          </div>
+          <>
+            {/* 1. Popup Mode Content */}
+            {frame.renderMode === 'popup' && (
+              <div className="flex flex-col items-center justify-center text-center p-4">
+                 <ExternalLink size={48} className="text-gray-700 mb-4" />
+                 <h3 className="text-gray-400 text-sm mb-2">Popup Mode Active</h3>
+                 <p className="text-gray-500 text-xs mb-4 max-w-[200px]">
+                   브라우저 보안 정책을 우회하기 위해<br/>이 페이지는 별도 창에서 실행됩니다.
+                 </p>
+                 <button onClick={openExternal} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold flex items-center gap-2">
+                   OPEN WINDOW <ExternalLink size={14} />
+                 </button>
+              </div>
+            )}
+
+            {/* 2. Iframe (Strictly HTTPS) */}
+            {frame.renderMode !== 'popup' && (
+               <div className="w-full h-full" style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, transformOrigin: 'center center' }}>
+                  <iframe
+                      key={key}
+                      src={displayUrl}
+                      className="w-full h-full border-0 block"
+                      sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock allow-downloads"
+                      referrerPolicy="no-referrer"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  />
+               </div>
+            )}
+          </>
         ) : (
           <div className="text-gray-800 text-[10px] font-mono flex flex-col items-center gap-2">
-            <MousePointer2 size={24} className="opacity-20" /> CH_{frame.id} READY
+            <Globe size={24} className="opacity-10" /> 
+            <span>CH_{frame.id} READY</span>
           </div>
         )}
       </div>
@@ -215,16 +515,25 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
 };
 
 // --- App Component ---
-const INITIAL_FRAMES: FrameConfig[] = [
-  { id: 1, url: 'http://172.16.8.91/remote-access', isMaximized: false },
-  { id: 2, url: 'http://172.16.8.92/remote-access', isMaximized: false },
-  { id: 3, url: 'http://172.16.8.93/remote-access', isMaximized: false },
-  { id: 4, url: 'http://172.16.8.94/remote-access', isMaximized: false },
-];
-
 function App() {
-  const [frames, setFrames] = useState<FrameConfig[]>(INITIAL_FRAMES);
+  const [frames, setFrames] = useState<FrameConfig[]>([]);
   const [isPortrait, setIsPortrait] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  
+  // Global Settings State
+  const [settings, setSettings] = useState<AppSettings>({
+    defaultRenderMode: 'direct'
+  });
+
+  // Initialize frames only once
+  useEffect(() => {
+    setFrames([
+      { id: 1, protocol: 'https://', url: '172.16.8.91/remote-access', renderMode: settings.defaultRenderMode },
+      { id: 2, protocol: 'https://', url: '172.16.8.92/remote-access', renderMode: settings.defaultRenderMode },
+      { id: 3, protocol: 'https://', url: '172.16.8.93/remote-access', renderMode: settings.defaultRenderMode },
+      { id: 4, protocol: 'https://', url: '172.16.8.94/remote-access', renderMode: settings.defaultRenderMode },
+    ]);
+  }, []);
 
   useEffect(() => {
     const loader = document.getElementById('loading-text');
@@ -236,46 +545,58 @@ function App() {
     return () => window.removeEventListener('resize', checkOrientation);
   }, []);
 
-  const handleUpdateUrl = (id: number, url: string) => setFrames(prev => prev.map(f => f.id === id ? { ...f, url } : f));
+  const handleUpdateFrame = (id: number, updates: Partial<FrameConfig>) => {
+    setFrames(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
+  };
   const handleMaximize = (id: number) => setFrames(prev => prev.map(f => ({ ...f, isMaximized: f.id === id })));
   const handleRestore = () => setFrames(prev => prev.map(f => ({ ...f, isMaximized: false })));
-  const handleClose = (id: number) => frames.length > 1 && setFrames(prev => prev.filter(f => f.id !== id));
+  const handleClose = (id: number) => setFrames(prev => prev.map(f => f.id === id ? { ...f, url: '', protocol: 'https://', renderMode: settings.defaultRenderMode } : f));
 
   const isAnyMaximized = frames.some(f => f.isMaximized);
 
   const getGridStyle = () => {
     if (isAnyMaximized) return { gridTemplateColumns: '1fr', gridTemplateRows: '1fr' };
-    if (isPortrait) return { gridTemplateColumns: '1fr', gridTemplateRows: `repeat(${frames.length}, 1fr)` };
-    if (frames.length === 1) return { gridTemplateColumns: '1fr', gridTemplateRows: '1fr' };
-    if (frames.length === 2) return { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr' };
+    if (isPortrait) return { gridTemplateColumns: '1fr', gridTemplateRows: 'repeat(4, 1fr)' };
     return { gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' };
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] w-screen bg-black text-gray-100 font-sans overflow-hidden">
+    <div className="flex flex-col h-[100dvh] w-screen bg-black text-gray-100 overflow-hidden">
       <main className="h-full w-full relative bg-black overflow-hidden">
-        <div className="grid-container h-full w-full grid gap-px bg-gray-900" style={getGridStyle()}>
-          {frames.map((frame, index) => {
-            let spanClass = "col-span-1 row-span-1";
-            if (!isAnyMaximized && frames.length === 3 && !isPortrait) {
-               // 유저 요청: 위/아래를 키워줘 (세로 늘리기)
-               // 첫 번째 프레임을 왼쪽 열 전체(2행) 차지하게 하여 세로로 늘림
-               if (index === 0) spanClass = "col-span-1 row-span-2";
-            }
-            return (
-              <BrowserFrame
-                key={frame.id}
-                frame={frame}
-                spanClass={spanClass}
-                onUpdateUrl={handleUpdateUrl}
-                onMaximize={handleMaximize}
-                onRestore={handleRestore}
-                onClose={() => handleClose(frame.id)}
-                isMaximizedMode={isAnyMaximized}
-              />
-            );
-          })}
+        <div className="h-full w-full grid gap-px bg-gray-800" style={getGridStyle()}>
+          {frames.map((frame) => (
+            <BrowserFrame
+              key={frame.id}
+              frame={frame}
+              spanClass="col-span-1 row-span-1"
+              settings={settings}
+              onUpdateFrame={handleUpdateFrame}
+              onMaximize={handleMaximize}
+              onRestore={handleRestore}
+              onClose={() => handleClose(frame.id)}
+              isMaximizedMode={isAnyMaximized}
+            />
+          ))}
         </div>
+
+        {/* Floating Settings Button */}
+        <button 
+          onClick={() => setShowSettings(true)}
+          className="absolute bottom-6 left-6 z-50 bg-gray-800/80 hover:bg-blue-600 text-white p-3 rounded-full shadow-2xl border border-gray-600 backdrop-blur-md transition-all"
+        >
+          <Settings size={20} />
+        </button>
+
+        {/* Settings Modal */}
+        {showSettings && (
+          <SettingsModal 
+            settings={settings}
+            frames={frames} 
+            onUpdateSettings={setSettings} 
+            onClose={() => setShowSettings(false)} 
+          />
+        )}
+
       </main>
     </div>
   );
