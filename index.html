@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>DeX QuadBrowser</title>
+    <title>DeX QuadBrowser v33</title>
     
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#000000" />
@@ -25,6 +25,12 @@
       .frame-container:hover .toolbar { opacity: 1; }
       
       #loading-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #444; font-family: sans-serif; text-align: center; }
+
+      /* DeX/Desktop Friendly Scrollbar */
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: #0f0f0f; }
+      ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #555; }
     </style>
 
     <script>
@@ -47,7 +53,7 @@
   </head>
   <body class="text-white select-none bg-black">
     <div id="loading-text">
-      Loading DeX QuadBrowser (v41)...
+      Loading DeX QuadBrowser (v33)...
     </div>
     <div id="root"></div>
     <script type="text/babel" data-type="module" src="./index.tsx" data-presets="react,typescript"></script>

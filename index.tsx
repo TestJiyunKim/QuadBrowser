@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Gamepad2, Move, ChevronDown, ExternalLink, ShieldAlert, Lock, Unlock, HelpCircle, Layers, Globe, Zap, Settings, Check, AlertTriangle, Clock, Activity, Stethoscope, Wifi, WifiOff, Smartphone } from 'lucide-react';
+import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Gamepad2, Move, ChevronDown, ExternalLink, ShieldAlert, Lock, Unlock, HelpCircle, Layers, Globe, Zap, Settings, Check, AlertTriangle, Clock, Activity, Stethoscope, Wifi, WifiOff, Smartphone, Monitor } from 'lucide-react';
 
 // --- Types ---
 type RenderMode = 'direct' | 'magic' | 'popup';
@@ -27,14 +27,56 @@ const checkConnection = async (url: string): Promise<{ status: 'ok' | 'error' | 
   try {
     // Attempt a no-cors request to check reachability (opaque response means server is up)
     await fetch(target, { mode: 'no-cors', cache: 'no-store' });
-    
-    // If we get here, DNS and TCP handshake worked.
     return { status: 'ok', msg: 'Server Reachable' };
   } catch (e) {
-    // Network error (DNS, Connection Refused, SSL Error)
     return { status: 'error', msg: 'Unreachable / SSL Error' };
   }
 };
+
+// --- Kiwi Guide Modal ---
+const KiwiGuideModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
+  <div className="absolute inset-0 z-[120] bg-black/90 backdrop-blur-md flex items-center justify-center p-4" onClick={onClose}>
+    <div className="bg-gray-900 border border-gray-600 rounded-xl shadow-2xl max-w-md w-full p-6 relative" onClick={e => e.stopPropagation()}>
+      <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X size={24}/></button>
+      
+      <h2 className="text-xl font-bold text-green-400 flex items-center gap-2 mb-4">
+        <Smartphone size={24} /> Kiwi Browser 최적화 가이드
+      </h2>
+      
+      <div className="space-y-4 text-sm text-gray-300">
+        <p>
+          이 앱은 <b>Samsung DeX</b>와 <b>Kiwi Browser</b> 환경에 최적화되어 있습니다.
+          화면이 하얗게 나오거나 거부된다면 다음 순서대로 설정하세요.
+        </p>
+
+        <ol className="list-decimal pl-5 space-y-2 marker:text-green-500">
+          <li>
+            <span className="text-white font-bold">확장 프로그램 설치</span>: <br/>
+            Kiwi Browser 메뉴 &gt; 확장 프로그램 &gt; 스토어에서 <span className="text-yellow-400">"Ignore X-Frame-Options"</span> 검색 및 설치.
+          </li>
+          <li>
+            <span className="text-white font-bold">SSL 인증서 수락</span>: <br/>
+            각 프레임의 주소(https://172.16.8.xx)를 새 탭에서 한 번씩 열어 <span className="text-red-300">"고급 &gt; 안전하지 않음으로 이동"</span>을 클릭하여 인증서를 신뢰시킵니다.
+          </li>
+          <li>
+            <span className="text-white font-bold">Direct 모드 사용</span>: <br/>
+            위 설정이 완료되면 <b>Direct 모드</b>(지구본 아이콘)에서도 끊김 없이 4분할 화면을 볼 수 있습니다.
+          </li>
+        </ol>
+
+        <div className="bg-gray-800 p-3 rounded border border-gray-700 mt-4 text-xs">
+          <p className="text-gray-400">
+            * 팝업 모드를 사용하지 않아도 되므로 DeX에서의 멀티태스킹 효율이 극대화됩니다.
+          </p>
+        </div>
+      </div>
+
+      <button onClick={onClose} className="w-full mt-6 bg-green-700 hover:bg-green-600 text-white py-3 rounded-lg font-bold text-lg">
+        확인했습니다
+      </button>
+    </div>
+  </div>
+);
 
 // --- Troubleshoot Modal Component ---
 interface TroubleshootModalProps {
@@ -69,7 +111,7 @@ const TroubleshootModal: React.FC<TroubleshootModalProps> = ({ frame, onClose, o
         </h2>
 
         <div className="bg-gray-800 rounded p-3 mb-4 font-mono text-xs">
-          <div className="text-gray-400 mb-1">Target URL:</div>
+          <div className="text-gray-400 mb-1">Target URL (HTTPS):</div>
           <div className="text-blue-300 break-all">{rawUrl}</div>
         </div>
 
@@ -91,39 +133,39 @@ const TroubleshootModal: React.FC<TroubleshootModalProps> = ({ frame, onClose, o
         <div className="space-y-3">
           {status === 'error' && (
             <div className="text-xs text-gray-300">
-              <p className="mb-1 text-red-300">⚠️ <b>ERR_ADDRESS_UNREACHABLE</b> 또는 인증서 오류</p>
+              <p className="mb-1 text-red-300">⚠️ <b>ERR_ADDRESS_UNREACHABLE</b> 또는 SSL 오류</p>
               <button 
                 onClick={() => window.open(rawUrl, '_blank')}
                 className="w-full bg-blue-700 hover:bg-blue-600 text-white py-2 rounded flex items-center justify-center gap-2 font-bold mt-2"
               >
-                <ExternalLink size={14} /> 새 탭에서 열어 인증서 수락
+                <ExternalLink size={14} /> 새 탭에서 SSL 인증서 수락
               </button>
-              <p className="text-[10px] text-gray-500 mt-1 text-center">새 탭: "고급 &gt; 안전하지 않음으로 이동" 클릭</p>
             </div>
           )}
 
           {status === 'ok' && (
              <div className="text-xs text-gray-300">
                <div className="bg-orange-900/20 border border-orange-700/30 p-2 rounded mb-3">
-                 <p className="font-bold text-orange-400 mb-1">서버는 응답하지만 화면이 안 보이나요?</p>
-                 <p className="text-[10px] text-gray-400">보안 정책(X-Frame-Options) 차단됨. (Frame 4 등)</p>
+                 <p className="font-bold text-orange-400 mb-1">화면이 하얗게 보이나요?</p>
+                 <p className="text-[10px] text-gray-400">Kiwi Browser에서 'Ignore X-Frame-Options' 확장 프로그램을 설치했는지 확인하세요.</p>
                </div>
 
                <div className="grid grid-cols-2 gap-2">
+                 <button 
+                   onClick={() => { onUpdateFrame(frame.id, { renderMode: 'direct' }); onClose(); }}
+                   className="bg-green-800 hover:bg-green-700 text-white py-2 rounded flex flex-col items-center justify-center gap-1 text-[10px]"
+                 >
+                   <Monitor size={14} className="text-green-200"/>
+                   <span>Direct 모드 (Kiwi 권장)</span>
+                 </button>
+                 
                  <button 
                    onClick={() => { onUpdateFrame(frame.id, { renderMode: 'popup' }); onClose(); }}
                    className="bg-gray-700 hover:bg-gray-600 text-white py-2 rounded flex flex-col items-center justify-center gap-1 text-[10px]"
                  >
                    <ExternalLink size={14} className="text-orange-400"/>
-                   <span>팝업 모드 (기본)</span>
+                   <span>팝업 모드 (대체용)</span>
                  </button>
-                 
-                 <div className="bg-gray-800 p-2 rounded text-[10px] text-gray-400 flex flex-col justify-center">
-                   <div className="flex items-center gap-1 text-green-400 font-bold mb-0.5">
-                     <Smartphone size={10} /> Kiwi Browser
-                   </div>
-                   <span>확장 프로그램 사용시<br/><b>Direct 모드</b> 가능</span>
-                 </div>
                </div>
              </div>
           )}
@@ -140,9 +182,10 @@ interface SettingsModalProps {
   frames: FrameConfig[];
   onUpdateSettings: (newSettings: AppSettings) => void;
   onClose: () => void;
+  onOpenKiwiGuide: () => void;
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdateSettings, onClose }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdateSettings, onClose, onOpenKiwiGuide }) => {
   const [netStatus, setNetStatus] = useState<Record<number, string>>({});
   const [checking, setChecking] = useState(false);
 
@@ -175,15 +218,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
         </div>
 
         <div className="space-y-6">
-          {/* Pro Tip */}
-          <div className="bg-purple-900/20 p-3 rounded border border-purple-500/30">
-             <div className="flex items-center gap-2 mb-1 text-purple-400 font-bold text-xs">
-               <Zap size={12} /> Pro Tip: Frame Blocking 해결
+          {/* Kiwi Guide Button */}
+          <button 
+            onClick={onOpenKiwiGuide}
+            className="w-full bg-green-900/30 hover:bg-green-900/50 border border-green-600/50 p-3 rounded flex items-center gap-3 transition-colors text-left"
+          >
+             <div className="bg-green-600 p-2 rounded-full text-white">
+               <Smartphone size={16} />
              </div>
-             <p className="text-[11px] text-gray-400 leading-relaxed">
-               <b>Kiwi Browser</b> 설치 후 <b>"Ignore X-Frame-Options"</b> 확장 프로그램을 추가하면 Direct 모드에서도 모든 화면이 정상 작동합니다.
-             </p>
-          </div>
+             <div>
+               <div className="text-green-400 font-bold text-xs uppercase">Optimization</div>
+               <div className="text-white text-sm font-bold">Kiwi Browser 설정 가이드</div>
+               <div className="text-gray-400 text-[10px]">DeX 모드에서 화면이 안 나올 때 클릭</div>
+             </div>
+          </button>
 
           {/* Network Dashboard */}
           <div>
@@ -239,6 +287,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
                 </button>
               ))}
             </div>
+            <p className="text-[10px] text-gray-500 mt-1">* Kiwi Browser는 <b>DIRECT</b> 모드를 권장합니다.</p>
           </div>
         </div>
 
@@ -324,11 +373,10 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
   };
 
   const displayUrl = getDisplayUrl();
-  const rawUrl = `https://${frame.url}`;
   
   const openExternal = () => {
     if (!frame.url) return;
-    window.open(rawUrl, '_blank', 'noopener,noreferrer');
+    window.open(`https://${frame.url}`, '_blank', 'noopener,noreferrer');
   };
   
   const handleZoom = (delta: number) => setScale(prev => parseFloat(Math.max(0.1, Math.min(prev + delta, 5.0)).toFixed(3)));
@@ -394,7 +442,7 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
           <div className="flex-grow flex items-center bg-black/40 rounded border border-gray-700 focus-within:border-blue-500 transition-colors h-7">
             <div 
               className="h-full px-2 text-[10px] font-bold border-r border-gray-700 flex items-center gap-1 text-green-400 cursor-default"
-              title="HTTPS Secured (Enforced)"
+              title="HTTPS Secured"
             >
               <Lock size={10} />
             </div>
@@ -405,7 +453,7 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
                 value={inputUrl === 'about:blank' ? '' : inputUrl}
                 onChange={handleUrlChange}
                 className="w-full bg-transparent text-[11px] text-gray-200 px-2 outline-none font-mono h-full"
-                placeholder="domain.com (HTTPS)"
+                placeholder="domain.com"
               />
               <button type="submit" className="hidden">Go</button>
             </form>
@@ -519,13 +567,14 @@ function App() {
   const [frames, setFrames] = useState<FrameConfig[]>([]);
   const [isPortrait, setIsPortrait] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showKiwiGuide, setShowKiwiGuide] = useState(false);
   
-  // Global Settings State
+  // Global Settings State: Default to 'direct' for Kiwi optimization
   const [settings, setSettings] = useState<AppSettings>({
-    defaultRenderMode: 'direct'
+    defaultRenderMode: 'direct' 
   });
 
-  // Initialize frames only once
+  // Initialize frames with default HTTPS IPs
   useEffect(() => {
     setFrames([
       { id: 1, protocol: 'https://', url: '172.16.8.91/remote-access', renderMode: settings.defaultRenderMode },
@@ -582,9 +631,9 @@ function App() {
         {/* Floating Settings Button */}
         <button 
           onClick={() => setShowSettings(true)}
-          className="absolute bottom-6 left-6 z-50 bg-gray-800/80 hover:bg-blue-600 text-white p-3 rounded-full shadow-2xl border border-gray-600 backdrop-blur-md transition-all"
+          className="absolute bottom-6 left-6 z-50 bg-gray-800/80 hover:bg-blue-600 text-white p-3 rounded-full shadow-2xl border border-gray-600 backdrop-blur-md transition-all group"
         >
-          <Settings size={20} />
+          <Settings size={20} className="group-hover:rotate-45 transition-transform" />
         </button>
 
         {/* Settings Modal */}
@@ -593,8 +642,14 @@ function App() {
             settings={settings}
             frames={frames} 
             onUpdateSettings={setSettings} 
-            onClose={() => setShowSettings(false)} 
+            onClose={() => setShowSettings(false)}
+            onOpenKiwiGuide={() => setShowKiwiGuide(true)}
           />
+        )}
+
+        {/* Kiwi Guide Modal */}
+        {showKiwiGuide && (
+          <KiwiGuideModal onClose={() => setShowKiwiGuide(false)} />
         )}
 
       </main>
