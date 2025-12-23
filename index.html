@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DeX QuadBrowser v74 (Offline)</title>
+    <title>DeX QuadBrowser v75 (Offline)</title>
     <link rel="manifest" href="./manifest.json">
     <style>
         /* --- OFFLINE CSS (Tailwind Replacement) --- */
@@ -90,9 +90,29 @@
         .pad-btn { background: #374151; border: none; border-radius: 4px; height: 36px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .pad-btn:active { background: var(--accent); }
 
-        /* FAB Settings */
-        .fab-settings { position: fixed; bottom: 20px; left: 20px; width: 48px; height: 48px; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-muted); display: flex; align-items: center; justify-content: center; z-index: 150; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5); transition: transform 0.2s; }
-        .fab-settings:hover { background: var(--accent); color: white; transform: scale(1.1) rotate(45deg); }
+        /* FAB Settings & Auto Hide Logic */
+        .fab-trigger { position: fixed; bottom: 0; left: 0; width: 80px; height: 80px; z-index: 149; } /* Trigger Zone */
+        
+        .fab-settings { 
+            position: fixed; bottom: 20px; left: 20px; width: 48px; height: 48px; border-radius: 50%; 
+            background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-muted); 
+            display: flex; align-items: center; justify-content: center; z-index: 150; 
+            cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5); 
+            transform: translateY(200%); /* Hidden by default */
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s, color 0.2s;
+        }
+
+        /* Reveal on hover (Trigger or Button itself) */
+        .fab-trigger:hover + .fab-settings,
+        .fab-settings:hover {
+            transform: translateY(0);
+        }
+
+        /* Active/Hover Style */
+        .fab-settings:hover { 
+            background: var(--accent); color: white; 
+            transform: scale(1.1) rotate(45deg); 
+        }
 
         /* Icons */
         svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
@@ -102,7 +122,8 @@
 
     <div id="app"></div>
 
-    <!-- Floating Settings Button -->
+    <!-- Floating Settings Button (Auto Hide) -->
+    <div class="fab-trigger"></div> <!-- Invisible trigger zone -->
     <div class="fab-settings" onclick="openSettings()">
         <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
     </div>
@@ -111,7 +132,7 @@
     <div id="modal-settings" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">
-                <div class="modal-title">Settings (v74)</div>
+                <div class="modal-title">Settings (v75)</div>
                 <button class="btn" onclick="closeModal('modal-settings')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
             </div>
             
