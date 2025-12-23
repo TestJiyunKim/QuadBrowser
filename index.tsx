@@ -186,7 +186,7 @@ const SettingsModal = ({ settings, frames, onUpdateSettings, onClose, onOpenKiwi
       <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Settings size={20} /> System Settings (v68)
+            <Settings size={20} /> System Settings (v69)
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={20}/></button>
         </div>
@@ -641,5 +641,5 @@ function App() {
   );
 }
 
-const root = createRoot(document.getElementById('root')!);
+const root = createRoot(document.getElementById('root'));
 root.render(<React.StrictMode><App /></React.StrictMode>);
