@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>DeX QuadBrowser v52</title>
+    <title>DeX QuadBrowser v60</title>
     
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#000000" />
@@ -12,6 +12,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
+    <!-- External Libs -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -20,7 +21,29 @@
       .frame-container { position: relative; display: flex; flex-direction: column; background: #0a0a0a; overflow: hidden; }
       .maximized { position: absolute !important; inset: 0 !important; z-index: 50 !important; }
       
-      #loading-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #444; font-family: sans-serif; text-align: center; }
+      #loading-overlay { 
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+        background: #000; z-index: 9999; 
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        color: #666; font-family: sans-serif; transition: opacity 0.5s;
+      }
+      
+      #error-log-container {
+        margin-top: 20px; width: 90%; max-width: 600px;
+        display: none; flex-direction: column; gap: 10px;
+      }
+      
+      #error-log {
+        color: #ef4444; font-size: 11px; white-space: pre-wrap; word-break: break-all;
+        background: #111; padding: 15px; border-radius: 6px; border: 1px solid #333;
+        max-height: 200px; overflow-y: auto; font-family: monospace;
+      }
+
+      .btn-reload {
+        background: #2563eb; color: white; border: none; padding: 10px 20px;
+        border-radius: 6px; font-weight: bold; cursor: pointer;
+      }
+      .btn-reload:active { background: #1d4ed8; }
 
       /* DeX/Desktop Friendly Scrollbar */
       ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -31,6 +54,36 @@
 
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
+      
+      // Global Error Capture
+      window.appErrors = [];
+      function logError(msg) {
+        window.appErrors.push(msg);
+        const logEl = document.getElementById('error-log');
+        if (logEl) {
+          logEl.innerText = window.appErrors.join('\n\n');
+          document.getElementById('error-log-container').style.display = 'flex';
+        }
+      }
+
+      window.onerror = function(msg, url, line, col, error) {
+        logError(`[JS Error] ${msg}\n@ ${url}:${line}:${col}`);
+        return false;
+      };
+      
+      window.onunhandledrejection = function(e) {
+        logError(`[Promise Fail] ${e.reason}`);
+      };
+
+      // Failsafe Timeout
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (!root || root.innerHTML.trim() === "") {
+          logError("[Timeout] React did not mount within 5 seconds.\nCheck network connection to CDN (esm.sh/unpkg).");
+          document.getElementById('loading-text').innerText = "Loading stuck?";
+          document.getElementById('error-log-container').style.display = 'flex';
+        }
+      }, 5000);
     </script>
 
     <script type="importmap">
@@ -48,10 +101,54 @@
     </script>
   </head>
   <body class="text-white select-none bg-black">
-    <div id="loading-text">
-      Loading DeX QuadBrowser (v52)...
+    
+    <div id="loading-overlay">
+      <div id="loading-text" class="animate-pulse font-bold text-xl mb-2">Initializing v60...</div>
+      <div class="text-xs text-gray-500">Optimized for DeX & Kiwi Browser</div>
+      
+      <div id="error-log-container">
+        <div id="error-log"></div>
+        <button class="btn-reload" onclick="forceReload()">🔄 Force Reload & Clear Cache</button>
+      </div>
     </div>
+
     <div id="root"></div>
-    <script type="text/babel" data-type="module" src="./index.tsx?v=52" data-presets="react,typescript"></script>
+
+    <!-- Add timestamp to bypass cache -->
+    <script type="text/babel" data-type="module" src="./index.tsx?v=60" data-presets="react,typescript"></script>
+
+    <script>
+      function forceReload() {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(let registration of registrations) {
+              registration.unregister();
+            }
+            window.location.reload(true);
+          });
+        } else {
+          window.location.reload(true);
+        }
+      }
+
+      // Service Worker Registration with Aggressive Update
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').then(reg => {
+            reg.onupdatefound = () => {
+              const installingWorker = reg.installing;
+              installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed') {
+                  if (navigator.serviceWorker.controller) {
+                    // New content available, force reload
+                    console.log('New content available; please refresh.');
+                  }
+                }
+              };
+            };
+          }).catch(err => logError("[SW Error] " + err));
+        });
+      }
+    </script>
   </body>
 </html>

@@ -212,7 +212,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
       <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Settings size={20} /> System Settings
+            <Settings size={20} /> System Settings (v60)
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={20}/></button>
         </div>
@@ -604,8 +604,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const loader = document.getElementById('loading-text');
-    if (loader) loader.style.display = 'none';
+    const loader = document.getElementById('loading-overlay');
+    if (loader) loader.style.opacity = '0';
+    setTimeout(() => { if(loader) loader.style.display = 'none'; }, 500);
 
     const checkOrientation = () => setIsPortrait(window.innerHeight > window.innerWidth);
     checkOrientation();
