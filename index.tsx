@@ -596,10 +596,10 @@ function App() {
   // Initialize frames with default HTTPS IPs
   useEffect(() => {
     setFrames([
-      { id: 1, protocol: 'https://', url: 'google.com', renderMode: settings.defaultRenderMode },
-      { id: 2, protocol: 'https://', url: 'naver.com', renderMode: settings.defaultRenderMode },
-      { id: 3, protocol: 'https://', url: 'daum.net', renderMode: settings.defaultRenderMode },
-      { id: 4, protocol: 'https://', url: 'bing.com', renderMode: settings.defaultRenderMode },
+      { id: 1, protocol: 'https://', url: '172.16.8.91', renderMode: settings.defaultRenderMode },
+      { id: 2, protocol: 'https://', url: '172.16.8.92', renderMode: settings.defaultRenderMode },
+      { id: 3, protocol: 'https://', url: '172.16.8.93', renderMode: settings.defaultRenderMode },
+      { id: 4, protocol: 'https://', url: '172.16.8.94', renderMode: settings.defaultRenderMode },
     ]);
   }, []);
 

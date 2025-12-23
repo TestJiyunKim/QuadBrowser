@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'dex-quad-v51';
+const CACHE_NAME = 'dex-quad-v52';
 const ASSETS = [
   './',
   './index.html',
