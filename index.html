@@ -250,7 +250,10 @@
 
                 <!-- Control Pad -->
                 <div id="pad-${f.id}" class="control-pad">
-                    <div style="font-size:10px; color:#60a5fa; font-weight:bold; text-align:center; margin-bottom:4px;">CONTROLS</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <span style="font-size:10px; color:#60a5fa; font-weight:bold;">CONTROLS</span>
+                        <button class="btn" style="width:20px; height:20px; min-height:0;" onclick="togglePad(${f.id})">${icon('close')}</button>
+                    </div>
                     <div class="pad-grid">
                         <button class="pad-btn" onclick="zoom(${f.id}, 0.1)">${icon('plus')}</button>
                         <button class="pad-btn" onclick="pan(${f.id}, 0, 1)">${icon('arrowUp')}</button>
@@ -433,6 +436,12 @@
             const f = STATE.frames.find(x => x.id === id);
             initX = f.x; initY = f.y;
             overlay.style.cursor = 'grabbing';
+        });
+
+        overlay.addEventListener('wheel', e => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            zoom(id, delta);
         });
 
         window.addEventListener('mousemove', e => {
