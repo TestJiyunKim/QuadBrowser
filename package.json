@@ -1,5 +1,5 @@
 {
-  "name": "dex-quadbrowser",
+  "name": "dex-quadbrowser-pro",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,8 +11,7 @@
   "dependencies": {
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "lucide-react": "0.292.0",
-    "@google/genai": "^1.34.0"
+    "lucide-react": "0.292.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
