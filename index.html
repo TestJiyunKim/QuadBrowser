@@ -1,158 +1,500 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>DeX QuadBrowser v69</title>
-    
-    <link rel="manifest" href="./manifest.json" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
-    <!-- External Libs with CORS to allow error inspection -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.tailwindcss.com" crossorigin="anonymous"></script>
-    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DeX QuadBrowser v74 (Offline)</title>
+    <link rel="manifest" href="./manifest.json">
     <style>
-      html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0; background: #000; overflow: hidden; }
-      .frame-container { position: relative; display: flex; flex-direction: column; background: #0a0a0a; overflow: hidden; }
-      .maximized { position: absolute !important; inset: 0 !important; z-index: 50 !important; }
-      
-      #loading-overlay { 
-        position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
-        background: #000; z-index: 9999; 
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        color: #666; font-family: sans-serif; transition: opacity 0.5s;
-      }
-      
-      #error-log-container {
-        margin-top: 20px; width: 90%; max-width: 600px;
-        display: none; flex-direction: column; gap: 10px;
-      }
-      
-      #error-log {
-        color: #ef4444; font-size: 11px; white-space: pre-wrap; word-break: break-all;
-        background: #111; padding: 15px; border-radius: 6px; border: 1px solid #333;
-        max-height: 200px; overflow-y: auto; font-family: monospace; text-align: left;
-      }
+        /* --- OFFLINE CSS (Tailwind Replacement) --- */
+        :root {
+            --bg-body: #000000;
+            --bg-panel: #111827; /* gray-900 */
+            --bg-toolbar: #0f172a; /* slate-900 */
+            --border: #374151; /* gray-700 */
+            --text-main: #f3f4f6; /* gray-100 */
+            --text-muted: #9ca3af; /* gray-400 */
+            --accent: #2563eb; /* blue-600 */
+            --accent-hover: #1d4ed8;
+            --danger: #ef4444; /* red-500 */
+            --success: #22c55e; /* green-500 */
+            --warn: #f59e0b; /* amber-500 */
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { margin: 0; background: var(--bg-body); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; height: 100vh; width: 100vw; }
+        
+        /* Layout */
+        #app { display: grid; width: 100%; height: 100%; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1px; background: var(--border); }
+        body.portrait #app { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); }
+        body.maximized-view #app { display: block; }
+        
+        /* Frame */
+        .frame { position: relative; background: #000; display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0; }
+        .frame.maximized { position: absolute; inset: 0; z-index: 100; }
+        .frame.hidden-frame { display: none; }
 
-      .btn-reload {
-        background: #2563eb; color: white; border: none; padding: 10px 20px;
-        border-radius: 6px; font-weight: bold; cursor: pointer;
-      }
-      .btn-reload:active { background: #1d4ed8; }
+        /* Toolbar - Auto Hide Logic */
+        .hover-trigger { position: absolute; top: 0; left: 0; right: 0; height: 20px; z-index: 30; }
+        .toolbar {
+            position: absolute; top: 0; left: 0; right: 0; z-index: 40; height: 44px;
+            background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(4px);
+            transform: translateY(-100%); transition: transform 0.2s ease-in-out;
+            display: flex; align-items: center; padding: 0 8px; gap: 6px;
+        }
+        .toolbar.visible, 
+        .hover-trigger:hover + .toolbar, 
+        .toolbar:hover,
+        .toolbar:focus-within { transform: translateY(0); }
 
-      /* DeX/Desktop Friendly Scrollbar */
-      ::-webkit-scrollbar { width: 8px; height: 8px; }
-      ::-webkit-scrollbar-track { background: #0f0f0f; }
-      ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: #555; }
+        /* Controls */
+        .badge { background: var(--accent); color: white; width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        
+        .btn { background: transparent; border: 1px solid transparent; color: var(--text-muted); cursor: pointer; width: 28px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+        .btn:hover { color: white; background: rgba(255,255,255,0.1); }
+        .btn.active { color: var(--accent); border-color: var(--accent); background: rgba(37, 99, 235, 0.1); }
+        .btn-danger { color: var(--danger); }
+        .btn-mode { font-size: 10px; width: auto; padding: 0 6px; border: 1px solid var(--border); font-weight: bold; text-transform: uppercase; }
+
+        .url-wrapper { flex: 1; display: flex; align-items: center; background: #1f2937; border: 1px solid var(--border); border-radius: 4px; height: 30px; padding: 0 8px; margin: 0 4px; transition: border-color 0.2s; }
+        .url-wrapper:focus-within { border-color: var(--accent); }
+        .url-input { background: transparent; border: none; color: white; width: 100%; font-family: monospace; font-size: 13px; }
+        .icon-lock { color: var(--success); margin-right: 6px; }
+
+        /* Viewport */
+        .viewport { flex: 1; position: relative; overflow: hidden; background: #000; }
+        .content-wrapper { width: 100%; height: 100%; transform-origin: center; transition: transform 0.1s; }
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+        
+        .drag-overlay { position: absolute; inset: 0; z-index: 10; background: rgba(37,99,235,0.05); border: 2px dashed var(--accent); cursor: move; display: none; }
+        .frame.dragging .drag-overlay { display: block; }
+
+        /* Modals */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 400px; padding: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        .modal-title { font-weight: bold; font-size: 18px; display: flex; align-items: center; gap: 8px; color: white; }
+        
+        .card { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 8px; }
+        .row { display: flex; justify-content: space-between; align-items: center; }
+        
+        .btn-block { display: block; width: 100%; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .btn-block:hover { background: var(--accent-hover); }
+
+        /* Control Pad */
+        .control-pad { position: absolute; bottom: 16px; right: 16px; background: rgba(17, 24, 39, 0.95); border: 1px solid var(--border); padding: 8px; border-radius: 12px; z-index: 50; display: none; width: 140px; }
+        .control-pad.show { display: block; }
+        .pad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
+        .pad-btn { background: #374151; border: none; border-radius: 4px; height: 36px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .pad-btn:active { background: var(--accent); }
+
+        /* FAB Settings */
+        .fab-settings { position: fixed; bottom: 20px; left: 20px; width: 48px; height: 48px; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-muted); display: flex; align-items: center; justify-content: center; z-index: 150; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5); transition: transform 0.2s; }
+        .fab-settings:hover { background: var(--accent); color: white; transform: scale(1.1) rotate(45deg); }
+
+        /* Icons */
+        svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
     </style>
+</head>
+<body>
 
-    <script>
-      window.process = { env: { NODE_ENV: 'production' } };
-      
-      // Global Error Capture
-      window.appErrors = [];
-      function logError(msg) {
-        window.appErrors.push(msg);
-        const logEl = document.getElementById('error-log');
-        const container = document.getElementById('error-log-container');
-        if (logEl && container) {
-          logEl.innerText = window.appErrors.join('\n\n');
-          container.style.display = 'flex';
-          // Ensure loading text doesn't hide errors
-          document.getElementById('loading-text').innerText = "Startup Error Detected";
-        }
-        console.error(msg);
-      }
+    <div id="app"></div>
 
-      window.onerror = function(msg, url, line, col, error) {
-        // Now that we have crossorigin, 'msg' should be descriptive
-        logError(`[JS Error] ${msg}\n@ ${url ? url.split('?')[0] : 'inline'}:${line}:${col}`);
-        return false;
-      };
-      
-      window.onunhandledrejection = function(e) {
-        logError(`[Promise Fail] ${e.reason}`);
-      };
-
-      // Failsafe Timeout
-      setTimeout(() => {
-        const root = document.getElementById('root');
-        if (!root || root.innerHTML.trim() === "") {
-          const hasError = window.appErrors.length > 0;
-          if (!hasError) {
-             logError("[Timeout] React failed to mount (5s).\nPossible causes:\n1. CDN Blocked (check internet)\n2. Syntax Error in index.tsx");
-          }
-        }
-      }, 5000);
-    </script>
-
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.3.1",
-        "react/": "https://esm.sh/react@18.3.1/",
-        "react-dom": "https://esm.sh/react-dom@18.3.1",
-        "react-dom/": "https://esm.sh/react-dom@18.3.1/",
-        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
-        "lucide-react": "https://esm.sh/lucide-react@0.292.0?external=react,react-dom",
-        "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
-      }
-    }
-    </script>
-  </head>
-  <body class="text-white select-none bg-black">
-    
-    <div id="loading-overlay">
-      <div id="loading-text" class="animate-pulse font-bold text-xl mb-2">Initializing v69...</div>
-      <div class="text-xs text-gray-500">DeX QuadBrowser</div>
-      
-      <div id="error-log-container">
-        <div id="error-log"></div>
-        <button class="btn-reload" onclick="forceReload()">🔄 Force Reload (Clear Cache)</button>
-      </div>
+    <!-- Floating Settings Button -->
+    <div class="fab-settings" onclick="openSettings()">
+        <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
     </div>
 
-    <div id="root"></div>
+    <!-- Settings Modal -->
+    <div id="modal-settings" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title">Settings (v74)</div>
+                <button class="btn" onclick="closeModal('modal-settings')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+            
+            <div class="card" onclick="openModal('modal-kiwi')" style="cursor: pointer; border-color: var(--success);">
+                <div style="color: var(--success); font-weight: bold; font-size: 12px; margin-bottom: 4px;">RECOMMENDED</div>
+                <div style="font-weight: bold; margin-bottom: 2px;">Kiwi Browser Optimization</div>
+                <div style="font-size: 11px; color: var(--text-muted);">Click here if screens are white or refused.</div>
+            </div>
 
-    <!-- Main App Script -->
-    <script type="text/babel" data-type="module" src="./index.tsx?v=69" data-presets="react,typescript"></script>
+            <div style="margin-top: 16px;">
+                <div class="row" style="margin-bottom: 8px;">
+                    <span style="font-weight: bold; font-size: 14px;">Network Status</span>
+                    <button class="btn" style="width:auto; padding:0 8px; font-size:11px;" onclick="checkAllNetworks()">SCAN ALL</button>
+                </div>
+                <div id="network-list"></div>
+            </div>
 
-    <script>
-      function forceReload() {
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            for(let registration of registrations) {
-              registration.unregister();
-            }
-            // Clear standard caches as well
-            caches.keys().then(names => {
-                for (let name of names) caches.delete(name);
-            });
-            window.location.reload(true);
-          }).catch(() => window.location.reload(true));
+            <div style="margin-top: 16px;">
+                <span style="font-weight: bold; font-size: 14px; display:block; margin-bottom: 8px;">Global Render Mode</span>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                    <button class="btn-mode" onclick="setGlobalMode('direct')">DIRECT</button>
+                    <button class="btn-mode" onclick="setGlobalMode('magic')">MAGIC</button>
+                    <button class="btn-mode" onclick="setGlobalMode('popup')">POPUP</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kiwi Guide Modal -->
+    <div id="modal-kiwi" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title" style="color: var(--success);">Kiwi Browser Guide</div>
+                <button class="btn" onclick="closeModal('modal-kiwi')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+            <div style="font-size: 13px; line-height: 1.5; color: #d1d5db;">
+                <p style="margin-bottom: 10px;">For the best experience in internal networks:</p>
+                <ol style="padding-left: 20px; margin-bottom: 15px;">
+                    <li>Install <b>"Ignore X-Frame-Options"</b> extension in Kiwi.</li>
+                    <li>Accept <b>SSL Certificates</b> for each internal IP.</li>
+                    <li>Use <b>DIRECT</b> mode after setup.</li>
+                </ol>
+                <button class="btn-block" onclick="closeModal('modal-kiwi')">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Troubleshoot Modal -->
+    <div id="modal-trouble" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title" style="color: var(--warn);">Connection Diagnose</div>
+                <button class="btn" onclick="closeModal('modal-trouble')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+            <div id="trouble-content"></div>
+        </div>
+    </div>
+
+<script>
+    // --- ICONS (SVG Strings) ---
+    const ICONS = {
+        refresh: '<path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>',
+        move: '<polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line>',
+        plus: '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
+        minus: '<line x1="5" y1="12" x2="19" y2="12"></line>',
+        maximize: '<polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line>',
+        minimize: '<polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line>',
+        close: '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>',
+        lock: '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>',
+        gamepad: '<line x1="6" y1="12" x2="10" y2="12"></line><line x1="8" y1="10" x2="8" y2="14"></line><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line><rect x="2" y="6" width="20" height="12" rx="2"></rect>',
+        stethoscope: '<path d="M4.8 2.3A.3.3 0 0 1 5 2h14a.3.3 0 0 1 .2.3v3.4a.3.3 0 0 1-.2.3.3.3 0 0 0-.1.6 3 3 0 0 1-1.4 3.4L13 12v6h2a2 2 0 0 1 2 2v2H7v-2a2 2 0 0 1 2-2h2v-6l-4.5-2a3 3 0 0 1-1.4-3.4.3.3 0 0 0-.1-.6.3.3 0 0 1-.2-.3V2.3z"></path>',
+        arrowUp: '<line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline>',
+        arrowDown: '<line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>',
+        arrowLeft: '<line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline>',
+        arrowRight: '<line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline>',
+        globe: '<circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>',
+        zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>',
+        external: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>'
+    };
+
+    function icon(name) { return `<svg viewBox="0 0 24 24">${ICONS[name] || ''}</svg>`; }
+
+    // --- STATE ---
+    const STATE = {
+        frames: [
+            { id: 1, url: '172.16.8.91', mode: 'direct', scale: 1, x:0, y:0, padOpen: false, drag: false },
+            { id: 2, url: '172.16.8.92', mode: 'direct', scale: 1, x:0, y:0, padOpen: false, drag: false },
+            { id: 3, url: '172.16.8.93', mode: 'direct', scale: 1, x:0, y:0, padOpen: false, drag: false },
+            { id: 4, url: '172.16.8.94', mode: 'direct', scale: 1, x:0, y:0, padOpen: false, drag: false },
+        ],
+        maximizedId: null
+    };
+
+    // --- INITIALIZATION ---
+    function init() {
+        const app = document.getElementById('app');
+        app.innerHTML = STATE.frames.map(f => `
+            <div id="frame-${f.id}" class="frame">
+                <!-- Toolbar -->
+                <div class="hover-trigger"></div>
+                <div class="toolbar">
+                    <div class="badge">${f.id}</div>
+                    <button class="btn btn-mode" id="btn-mode-${f.id}" onclick="toggleMode(${f.id})">${f.mode}</button>
+                    <div class="url-wrapper">
+                        <span class="icon-lock">${icon('lock')}</span>
+                        <input type="text" class="url-input" id="input-${f.id}" value="${f.url}" onkeydown="handleEnter(${f.id}, event)">
+                    </div>
+                    <button class="btn" title="Diagnose" onclick="openTrouble(${f.id})" style="color:#eab308">${icon('stethoscope')}</button>
+                    <button class="btn" onclick="reloadFrame(${f.id})">${icon('refresh')}</button>
+                    <button class="btn" id="btn-pad-${f.id}" onclick="togglePad(${f.id})">${icon('gamepad')}</button>
+                    <div style="width:1px; height:18px; background:var(--border); margin:0 4px;"></div>
+                    <button class="btn" id="btn-max-${f.id}" onclick="toggleMax(${f.id})">${icon('maximize')}</button>
+                    <button class="btn btn-danger" onclick="clearFrame(${f.id})">${icon('close')}</button>
+                </div>
+
+                <!-- Control Pad -->
+                <div id="pad-${f.id}" class="control-pad">
+                    <div style="font-size:10px; color:#60a5fa; font-weight:bold; text-align:center; margin-bottom:4px;">CONTROLS</div>
+                    <div class="pad-grid">
+                        <button class="pad-btn" onclick="zoom(${f.id}, 0.1)">${icon('plus')}</button>
+                        <button class="pad-btn" onclick="pan(${f.id}, 0, 1)">${icon('arrowUp')}</button>
+                        <button class="pad-btn" onclick="zoom(${f.id}, -0.1)">${icon('minus')}</button>
+                        <button class="pad-btn" onclick="pan(${f.id}, 1, 0)">${icon('arrowLeft')}</button>
+                        <button class="pad-btn" id="btn-drag-${f.id}" onclick="toggleDrag(${f.id})">${icon('move')}</button>
+                        <button class="pad-btn" onclick="pan(${f.id}, -1, 0)">${icon('arrowRight')}</button>
+                        <button class="pad-btn" onclick="resetView(${f.id})" style="grid-column: span 3; color:#f87171; font-size:10px; font-weight:bold;">RESET</button>
+                    </div>
+                </div>
+
+                <!-- Viewport -->
+                <div class="viewport" id="viewport-${f.id}">
+                    <div class="drag-overlay" id="drag-overlay-${f.id}"></div>
+                    <div class="content-wrapper" id="wrapper-${f.id}">
+                        <iframe id="iframe-${f.id}" src="about:blank"></iframe>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        // Initial Load
+        STATE.frames.forEach(f => loadFrame(f.id));
+        
+        // Orientation
+        const checkOrientation = () => document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
+        window.addEventListener('resize', checkOrientation);
+        checkOrientation();
+
+        // Drag Handlers
+        STATE.frames.forEach(f => setupDrag(f.id));
+    }
+
+    // --- CORE FUNCTIONS ---
+    function getUrl(f) {
+        if (!f.url || f.url === 'about:blank') return 'about:blank';
+        let raw = f.url.startsWith('http') ? f.url : `https://${f.url}`;
+        if (f.mode === 'magic') return `https://translate.google.com/translate?sl=auto&tl=ko&u=${encodeURIComponent(raw)}`;
+        return raw;
+    }
+
+    function loadFrame(id) {
+        const f = STATE.frames.find(x => x.id === id);
+        const iframe = document.getElementById(`iframe-${id}`);
+        const wrapper = document.getElementById(`wrapper-${id}`);
+        
+        if (f.mode === 'popup') {
+            wrapper.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; color:#9ca3af; text-align:center;">
+                    <div style="margin-bottom:8px;">${icon('external')}</div>
+                    <div style="font-size:12px; margin-bottom:12px;">Popup Mode</div>
+                    <button class="btn" style="width:auto; padding:0 12px; border:1px solid #4b5563;" onclick="window.open('https://${f.url}','_blank')">Open Window</button>
+                </div>
+            `;
         } else {
-          window.location.reload(true);
+            // Restore iframe if needed
+            if (!wrapper.querySelector('iframe')) {
+                wrapper.innerHTML = `<iframe id="iframe-${id}" src=""></iframe>`;
+            }
+            document.getElementById(`iframe-${id}`).src = getUrl(f);
         }
-      }
+        
+        document.getElementById(`btn-mode-${id}`).innerText = f.mode;
+        // Color code modes
+        const modeBtn = document.getElementById(`btn-mode-${id}`);
+        modeBtn.style.color = f.mode === 'magic' ? '#c084fc' : f.mode === 'popup' ? '#fb923c' : '#9ca3af';
+        modeBtn.style.borderColor = f.mode === 'magic' ? '#a855f7' : f.mode === 'popup' ? '#f97316' : '#374151';
+    }
 
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(reg => {
-               console.log("SW Registered");
-            })
-            .catch(err => {
-              // Service Workers often fail in preview environments (SecurityError).
-              // We log this to console only, DO NOT show the critical error UI.
-              console.warn("[SW Warning] Service Worker could not be registered. This is normal in preview environments or private tabs.", err);
+    function handleEnter(id, e) {
+        if (e.key === 'Enter') {
+            const f = STATE.frames.find(x => x.id === id);
+            f.url = e.target.value.trim();
+            loadFrame(id);
+            e.target.blur();
+        }
+    }
+
+    function reloadFrame(id) {
+        const f = STATE.frames.find(x => x.id === id);
+        loadFrame(id);
+    }
+
+    function clearFrame(id) {
+        const f = STATE.frames.find(x => x.id === id);
+        f.url = '';
+        document.getElementById(`input-${id}`).value = '';
+        loadFrame(id);
+    }
+
+    function toggleMode(id) {
+        const f = STATE.frames.find(x => x.id === id);
+        const modes = ['direct', 'magic', 'popup'];
+        f.mode = modes[(modes.indexOf(f.mode) + 1) % modes.length];
+        loadFrame(id);
+    }
+
+    function toggleMax(id) {
+        const f = STATE.frames.find(x => x.id === id);
+        const el = document.getElementById(`frame-${id}`);
+        const btn = document.getElementById(`btn-max-${id}`);
+        
+        if (STATE.maximizedId === id) {
+            // Restore
+            STATE.maximizedId = null;
+            el.classList.remove('maximized');
+            document.body.classList.remove('maximized-view');
+            btn.innerHTML = icon('maximize');
+            // Show others
+            document.querySelectorAll('.frame').forEach(div => div.classList.remove('hidden-frame'));
+        } else {
+            // Maximize
+            if (STATE.maximizedId) toggleMax(STATE.maximizedId); // Restore current
+            STATE.maximizedId = id;
+            el.classList.add('maximized');
+            document.body.classList.add('maximized-view');
+            btn.innerHTML = icon('minimize');
+            // Hide others to save resources
+            document.querySelectorAll('.frame').forEach(div => {
+                if (div.id !== `frame-${id}`) div.classList.add('hidden-frame');
             });
+        }
+    }
+
+    // --- TRANSFORM & DRAG ---
+    function updateTransform(id) {
+        const f = STATE.frames.find(x => x.id === id);
+        const el = document.getElementById(`wrapper-${id}`);
+        if(el) el.style.transform = `translate(${f.x}px, ${f.y}px) scale(${f.scale})`;
+    }
+
+    function zoom(id, delta) {
+        const f = STATE.frames.find(x => x.id === id);
+        f.scale = Math.max(0.1, Math.min(f.scale + delta, 5));
+        updateTransform(id);
+    }
+
+    function pan(id, dx, dy) {
+        const f = STATE.frames.find(x => x.id === id);
+        f.x += dx * 50;
+        f.y += dy * 50;
+        updateTransform(id);
+    }
+
+    function resetView(id) {
+        const f = STATE.frames.find(x => x.id === id);
+        f.x = 0; f.y = 0; f.scale = 1;
+        updateTransform(id);
+    }
+
+    function togglePad(id) {
+        const pad = document.getElementById(`pad-${id}`);
+        pad.classList.toggle('show');
+        const btn = document.getElementById(`btn-pad-${id}`);
+        btn.classList.toggle('active');
+    }
+
+    function toggleDrag(id) {
+        const f = STATE.frames.find(x => x.id === id);
+        f.drag = !f.drag;
+        const frameEl = document.getElementById(`frame-${id}`);
+        const btn = document.getElementById(`btn-drag-${id}`);
+        
+        if (f.drag) {
+            frameEl.classList.add('dragging');
+            btn.style.background = '#2563eb';
+        } else {
+            frameEl.classList.remove('dragging');
+            btn.style.background = '#374151';
+        }
+    }
+
+    function setupDrag(id) {
+        const overlay = document.getElementById(`drag-overlay-${id}`);
+        let isDown = false, startX, startY, initX, initY;
+
+        overlay.addEventListener('mousedown', e => {
+            isDown = true;
+            startX = e.clientX; startY = e.clientY;
+            const f = STATE.frames.find(x => x.id === id);
+            initX = f.x; initY = f.y;
+            overlay.style.cursor = 'grabbing';
         });
-      }
-    </script>
-  </body>
+
+        window.addEventListener('mousemove', e => {
+            if (!isDown) return;
+            const f = STATE.frames.find(x => x.id === id);
+            f.x = initX + (e.clientX - startX);
+            f.y = initY + (e.clientY - startY);
+            updateTransform(id);
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDown = false;
+            overlay.style.cursor = 'move';
+        });
+    }
+
+    // --- MODALS & SETTINGS ---
+    function openSettings() { document.getElementById('modal-settings').classList.add('open'); checkAllNetworks(); }
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    function setGlobalMode(mode) {
+        STATE.frames.forEach(f => {
+            f.mode = mode;
+            loadFrame(f.id);
+        });
+        closeModal('modal-settings');
+    }
+
+    async function checkAllNetworks() {
+        const list = document.getElementById('network-list');
+        list.innerHTML = '<div style="font-size:12px; color:#9ca3af; padding:4px;">Scanning...</div>';
+        
+        let html = '';
+        for (let f of STATE.frames) {
+            const status = await checkConnection(f.url);
+            html += `
+                <div class="card" style="display:flex; justify-content:space-between; padding:8px; margin-bottom:4px;">
+                    <div style="font-size:12px; font-weight:bold;">CH ${f.id} <span style="color:#6b7280; font-weight:normal;">${f.url || 'Empty'}</span></div>
+                    <div style="font-size:12px; font-weight:bold; color:${status.color}">${status.text}</div>
+                </div>
+            `;
+        }
+        list.innerHTML = html;
+    }
+
+    async function openTrouble(id) {
+        openModal('modal-trouble');
+        const content = document.getElementById('trouble-content');
+        content.innerHTML = '<div style="padding:20px; text-align:center;">Diagnosing...</div>';
+        
+        const f = STATE.frames.find(x => x.id === id);
+        const res = await checkConnection(f.url);
+        
+        content.innerHTML = `
+            <div style="background:#111; padding:10px; border-radius:6px; font-family:monospace; margin-bottom:15px; font-size:12px; word-break:break-all;">
+                Target: ${f.url || 'None'}
+            </div>
+            <div style="text-align:center; margin-bottom:20px;">
+                <div style="font-size:16px; font-weight:bold; color:${res.color}; margin-bottom:5px;">${res.text}</div>
+                <div style="font-size:12px; color:#9ca3af;">${res.msg}</div>
+            </div>
+            ${res.ok ? `
+                <button class="btn-block" style="background:#22c55e;" onclick="closeModal('modal-trouble')">OK</button>
+            ` : `
+                <button class="btn-block" onclick="window.open('https://${f.url}', '_blank')">Open in New Tab (Accept SSL)</button>
+            `}
+        `;
+    }
+
+    async function checkConnection(url) {
+        if (!url) return { ok: false, text: 'EMPTY', color: '#6b7280', msg: 'No URL entered' };
+        try {
+            const target = url.startsWith('http') ? url : `https://${url}`;
+            await fetch(target, { mode: 'no-cors', cache: 'no-store' });
+            return { ok: true, text: 'ONLINE', color: '#22c55e', msg: 'Server responded (Opaque)' };
+        } catch (e) {
+            return { ok: false, text: 'ERROR', color: '#ef4444', msg: 'Connection Refused / SSL Error' };
+        }
+    }
+
+    // Run
+    init();
+</script>
+</body>
 </html>

@@ -1,19 +1,9 @@
 
-const CACHE_NAME = 'dex-quad-v69';
+const CACHE_NAME = 'dex-quad-v74';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json',
-  './index.tsx',
-  'https://unpkg.com/@babel/standalone/babel.min.js',
-  'https://cdn.tailwindcss.com',
-  'https://esm.sh/react@18.3.1',
-  'https://esm.sh/react@18.3.1/',
-  'https://esm.sh/react-dom@18.3.1',
-  'https://esm.sh/react-dom@18.3.1/',
-  'https://esm.sh/react-dom@18.3.1/client',
-  'https://esm.sh/lucide-react@0.292.0?external=react,react-dom',
-  'https://esm.sh/@google/genai@^1.34.0'
+  './manifest.json'
 ];
 
 self.addEventListener('install', (e) => {
@@ -27,7 +17,7 @@ self.addEventListener('install', (e) => {
               if (res.ok) return cache.put(url, res);
               return null;
             })
-            .catch(err => console.error('Cache fetch error:', url, err));
+            .catch(err => console.error('Cache error:', url, err));
         })
       );
     })
@@ -52,16 +42,15 @@ self.addEventListener('fetch', (e) => {
   }
   
   e.respondWith(
-    caches.match(e.request).then(cachedResponse => {
-      const fetchPromise = fetch(e.request).then(networkResponse => {
-        if (networkResponse && networkResponse.status === 200 && e.request.method === 'GET') {
-          const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-        }
-        return networkResponse;
+    caches.match(e.request).then(cached => {
+      return cached || fetch(e.request).then(res => {
+         return caches.open(CACHE_NAME).then(cache => {
+             if (e.request.method === 'GET' && res.status === 200) {
+                 cache.put(e.request, res.clone());
+             }
+             return res;
+         });
       }).catch(() => {});
-
-      return cachedResponse || fetchPromise;
     })
   );
 });
