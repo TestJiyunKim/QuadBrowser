@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'dex-quad-v60-FORCE';
+const CACHE_NAME = 'dex-quad-v62';
 const ASSETS = [
   './',
   './index.html',
@@ -16,14 +16,12 @@ const ASSETS = [
   'https://esm.sh/@google/genai@^1.34.0'
 ];
 
-// Install: Force caching of new files
 self.addEventListener('install', (e) => {
-  self.skipWaiting(); // Force activation immediately
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return Promise.all(
         ASSETS.map(url => {
-          // Use 'reload' to bypass browser HTTP cache
           return fetch(url, { cache: 'reload' })
             .then(res => {
               if (res.ok) return cache.put(url, res);
@@ -36,21 +34,17 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// Activate: Clean up old caches immediately
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys.map(k => {
-        if (k !== CACHE_NAME) {
-          return caches.delete(k);
-        }
+        if (k !== CACHE_NAME) return caches.delete(k);
       })
     ))
   );
-  self.clients.claim(); // Take control of all clients immediately
+  self.clients.claim();
 });
 
-// Fetch: Stale-while-revalidate strategy for better development updates
 self.addEventListener('fetch', (e) => {
   if (e.request.mode === 'navigate') {
     e.respondWith(fetch(e.request).catch(() => caches.match('./index.html')));
@@ -65,9 +59,8 @@ self.addEventListener('fetch', (e) => {
           caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
         }
         return networkResponse;
-      }).catch(() => {/* offline */});
+      }).catch(() => {});
 
-      // Return cached response immediately if available, but still fetch in background
       return cachedResponse || fetchPromise;
     })
   );

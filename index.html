@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>DeX QuadBrowser v60</title>
+    <title>DeX QuadBrowser v62</title>
     
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#000000" />
@@ -12,9 +11,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <!-- External Libs -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- External Libs with CORS to allow error inspection -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.tailwindcss.com" crossorigin="anonymous"></script>
     
     <style>
       html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0; background: #000; overflow: hidden; }
@@ -36,7 +35,7 @@
       #error-log {
         color: #ef4444; font-size: 11px; white-space: pre-wrap; word-break: break-all;
         background: #111; padding: 15px; border-radius: 6px; border: 1px solid #333;
-        max-height: 200px; overflow-y: auto; font-family: monospace;
+        max-height: 200px; overflow-y: auto; font-family: monospace; text-align: left;
       }
 
       .btn-reload {
@@ -60,14 +59,19 @@
       function logError(msg) {
         window.appErrors.push(msg);
         const logEl = document.getElementById('error-log');
-        if (logEl) {
+        const container = document.getElementById('error-log-container');
+        if (logEl && container) {
           logEl.innerText = window.appErrors.join('\n\n');
-          document.getElementById('error-log-container').style.display = 'flex';
+          container.style.display = 'flex';
+          // Ensure loading text doesn't hide errors
+          document.getElementById('loading-text').innerText = "Startup Error Detected";
         }
+        console.error(msg);
       }
 
       window.onerror = function(msg, url, line, col, error) {
-        logError(`[JS Error] ${msg}\n@ ${url}:${line}:${col}`);
+        // Now that we have crossorigin, 'msg' should be descriptive
+        logError(`[JS Error] ${msg}\n@ ${url ? url.split('?')[0] : 'inline'}:${line}:${col}`);
         return false;
       };
       
@@ -79,9 +83,10 @@
       setTimeout(() => {
         const root = document.getElementById('root');
         if (!root || root.innerHTML.trim() === "") {
-          logError("[Timeout] React did not mount within 5 seconds.\nCheck network connection to CDN (esm.sh/unpkg).");
-          document.getElementById('loading-text').innerText = "Loading stuck?";
-          document.getElementById('error-log-container').style.display = 'flex';
+          const hasError = window.appErrors.length > 0;
+          if (!hasError) {
+             logError("[Timeout] React failed to mount (5s).\nPossible causes:\n1. CDN Blocked (check internet)\n2. Syntax Error in index.tsx");
+          }
         }
       }, 5000);
     </script>
@@ -103,19 +108,19 @@
   <body class="text-white select-none bg-black">
     
     <div id="loading-overlay">
-      <div id="loading-text" class="animate-pulse font-bold text-xl mb-2">Initializing v60...</div>
-      <div class="text-xs text-gray-500">Optimized for DeX & Kiwi Browser</div>
+      <div id="loading-text" class="animate-pulse font-bold text-xl mb-2">Initializing v62...</div>
+      <div class="text-xs text-gray-500">DeX QuadBrowser</div>
       
       <div id="error-log-container">
         <div id="error-log"></div>
-        <button class="btn-reload" onclick="forceReload()">🔄 Force Reload & Clear Cache</button>
+        <button class="btn-reload" onclick="forceReload()">🔄 Force Reload (Clear Cache)</button>
       </div>
     </div>
 
     <div id="root"></div>
 
-    <!-- Add timestamp to bypass cache -->
-    <script type="text/babel" data-type="module" src="./index.tsx?v=60" data-presets="react,typescript"></script>
+    <!-- Main App Script -->
+    <script type="text/babel" data-type="module" src="./index.tsx?v=62" data-presets="react,typescript"></script>
 
     <script>
       function forceReload() {
@@ -124,29 +129,28 @@
             for(let registration of registrations) {
               registration.unregister();
             }
+            // Clear standard caches as well
+            caches.keys().then(names => {
+                for (let name of names) caches.delete(name);
+            });
             window.location.reload(true);
-          });
+          }).catch(() => window.location.reload(true));
         } else {
           window.location.reload(true);
         }
       }
 
-      // Service Worker Registration with Aggressive Update
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').then(reg => {
-            reg.onupdatefound = () => {
-              const installingWorker = reg.installing;
-              installingWorker.onstatechange = () => {
-                if (installingWorker.state === 'installed') {
-                  if (navigator.serviceWorker.controller) {
-                    // New content available, force reload
-                    console.log('New content available; please refresh.');
-                  }
-                }
-              };
-            };
-          }).catch(err => logError("[SW Error] " + err));
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => {
+               console.log("SW Registered");
+            })
+            .catch(err => {
+              // Service Workers often fail in preview environments (SecurityError).
+              // We log this to console only, DO NOT show the critical error UI.
+              console.warn("[SW Warning] Service Worker could not be registered. This is normal in preview environments or private tabs.", err);
+            });
         });
       }
     </script>
