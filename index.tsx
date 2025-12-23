@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Gamepad2, Move, ChevronDown, ExternalLink, ShieldAlert, Lock, Unlock, HelpCircle, Layers, Globe, Zap, Settings, Check, AlertTriangle, Clock, Activity, Stethoscope, Wifi, WifiOff, Smartphone, Monitor } from 'lucide-react';
@@ -5,23 +6,8 @@ import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, ArrowUp, ArrowDown, Ar
 // --- Constants ---
 const RENDER_MODES = ['direct', 'magic', 'popup'];
 
-// --- Types ---
-type RenderMode = 'direct' | 'magic' | 'popup';
-
-interface AppSettings {
-  defaultRenderMode: RenderMode;
-}
-
-interface FrameConfig {
-  id: number;
-  protocol: 'https://'; // Strictly HTTPS
-  url: string; 
-  renderMode: RenderMode;
-  isMaximized?: boolean;
-}
-
 // --- Diagnostic Helper ---
-const checkConnection = async (url: string): Promise<{ status: 'ok' | 'error' | 'blocked', msg: string, code?: number }> => {
+const checkConnection = async (url) => {
   if (!url || url === 'about:blank') return { status: 'ok', msg: 'No URL' };
   
   const target = url.startsWith('http') ? url : `https://${url}`;
@@ -36,7 +22,7 @@ const checkConnection = async (url: string): Promise<{ status: 'ok' | 'error' | 
 };
 
 // --- Kiwi Guide Modal ---
-const KiwiGuideModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
+const KiwiGuideModal = ({ onClose }) => (
   <div className="absolute inset-0 z-[120] bg-black/90 backdrop-blur-md flex items-center justify-center p-4" onClick={onClose}>
     <div className="bg-gray-900 border border-gray-600 rounded-xl shadow-2xl max-w-md w-full p-6 relative" onClick={e => e.stopPropagation()}>
       <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X size={24}/></button>
@@ -81,13 +67,7 @@ const KiwiGuideModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 );
 
 // --- Troubleshoot Modal Component ---
-interface TroubleshootModalProps {
-  frame: FrameConfig;
-  onClose: () => void;
-  onUpdateFrame: (id: number, updates: Partial<FrameConfig>) => void;
-}
-
-const TroubleshootModal: React.FC<TroubleshootModalProps> = ({ frame, onClose, onUpdateFrame }) => {
+const TroubleshootModal = ({ frame, onClose, onUpdateFrame }) => {
   const [status, setStatus] = useState('checking'); 
   const [diagMsg, setDiagMsg] = useState('');
 
@@ -179,21 +159,13 @@ const TroubleshootModal: React.FC<TroubleshootModalProps> = ({ frame, onClose, o
 };
 
 // --- Settings Modal Component ---
-interface SettingsModalProps {
-  settings: AppSettings;
-  frames: FrameConfig[];
-  onUpdateSettings: (newSettings: AppSettings) => void;
-  onClose: () => void;
-  onOpenKiwiGuide: () => void;
-}
-
-const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdateSettings, onClose, onOpenKiwiGuide }) => {
+const SettingsModal = ({ settings, frames, onUpdateSettings, onClose, onOpenKiwiGuide }) => {
   const [netStatus, setNetStatus] = useState({});
   const [checking, setChecking] = useState(false);
 
   const runSystemCheck = async () => {
     setChecking(true);
-    const results: Record<number, string> = {};
+    const results = {};
     
     // Parallel check
     await Promise.all(frames.map(async (f) => {
@@ -214,7 +186,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
       <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Settings size={20} /> System Settings (v67)
+            <Settings size={20} /> System Settings (v68)
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={20}/></button>
         </div>
@@ -259,9 +231,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
                      <span className="text-[10px] text-gray-400 truncate max-w-[80px]">{f.url || 'Empty'}</span>
                    </div>
                    <div className="text-[10px] font-bold">
-                      {(netStatus as any)[f.id] === 'Online' && <span className="text-green-400">OK</span>}
-                      {(netStatus as any)[f.id] === 'Offline/Error' && <span className="text-red-400">ERR</span>}
-                      {!(netStatus as any)[f.id] && <span className="text-gray-600">-</span>}
+                      {netStatus[f.id] === 'Online' && <span className="text-green-400">OK</span>}
+                      {netStatus[f.id] === 'Offline/Error' && <span className="text-red-400">ERR</span>}
+                      {!netStatus[f.id] && <span className="text-gray-600">-</span>}
                    </div>
                  </div>
                ))}
@@ -275,7 +247,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
               {RENDER_MODES.map(mode => (
                 <button
                   key={mode}
-                  onClick={() => onUpdateSettings({ ...settings, defaultRenderMode: mode as RenderMode })}
+                  onClick={() => onUpdateSettings({ ...settings, defaultRenderMode: mode })}
                   className={`py-2 px-1 rounded border text-xs font-bold uppercase flex flex-col items-center gap-1 ${
                     settings.defaultRenderMode === mode 
                       ? 'bg-blue-900/40 border-blue-500 text-blue-400' 
@@ -304,18 +276,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
 };
 
 // --- BrowserFrame Component ---
-interface BrowserFrameProps {
-  frame: FrameConfig;
-  spanClass: string;
-  settings: AppSettings;
-  onUpdateFrame: (id: number, updates: Partial<FrameConfig>) => void;
-  onMaximize: (id: number) => void;
-  onRestore: () => void;
-  onClose: () => void;
-  isMaximizedMode: boolean;
-}
-
-const BrowserFrame: React.FC<BrowserFrameProps> = ({
+const BrowserFrame = ({
   frame,
   spanClass,
   settings,
@@ -352,14 +313,14 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
     positionRef.current = position;
   }, [position]);
 
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUrlChange = (e) => {
     let val = e.target.value;
     if (val.startsWith('http://')) val = val.replace('http://', '');
     else if (val.startsWith('https://')) val = val.replace('https://', '');
     setInputUrl(val);
   };
 
-  const handleApplyUrl = useCallback((e?: React.FormEvent) => {
+  const handleApplyUrl = useCallback((e) => {
     if (e) e.preventDefault();
     onUpdateFrame(frame.id, { url: inputUrl.trim(), protocol: 'https://' });
     setKey(k => k + 1);
@@ -381,15 +342,15 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
     window.open(`https://${frame.url}`, '_blank', 'noopener,noreferrer');
   };
   
-  const handleZoom = (delta: number) => setScale(prev => parseFloat(Math.max(0.1, Math.min(prev + delta, 5.0)).toFixed(3)));
-  const handlePan = (dx: number, dy: number) => {
+  const handleZoom = (delta) => setScale(prev => parseFloat(Math.max(0.1, Math.min(prev + delta, 5.0)).toFixed(3)));
+  const handlePan = (dx, dy) => {
     const step = 30 / scale;
     setPosition(prev => ({ x: prev.x + dx * step, y: prev.y + dy * step }));
   };
   const handleReset = () => { setScale(1.0); setPosition({ x: 0, y: 0 }); setIsDragMode(false); };
 
-  const onMouseDown = (e: React.MouseEvent) => { if (isDragMode) { setIsDragging(true); dragStartRef.current = { x: e.clientX, y: e.clientY }; } };
-  const onMouseMove = (e: React.MouseEvent) => {
+  const onMouseDown = (e) => { if (isDragMode) { setIsDragging(true); dragStartRef.current = { x: e.clientX, y: e.clientY }; } };
+  const onMouseMove = (e) => {
     if (!isDragging || !isDragMode) return;
     const dx = e.clientX - dragStartRef.current.x;
     const dy = e.clientY - dragStartRef.current.y;
@@ -399,7 +360,7 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
   const onMouseUp = () => setIsDragging(false);
 
   // Mouse Wheel Zoom Handler
-  const handleWheel = (e: React.WheelEvent) => {
+  const handleWheel = (e) => {
     if (isDragMode) {
       // Zoom In if scrolling UP (deltaY < 0), Zoom Out if scrolling DOWN (deltaY > 0)
       const delta = e.deltaY < 0 ? 0.05 : -0.05;
@@ -585,13 +546,13 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
 // --- App Component ---
 function App() {
-  const [frames, setFrames] = useState<FrameConfig[]>([]);
+  const [frames, setFrames] = useState([]);
   const [isPortrait, setIsPortrait] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showKiwiGuide, setShowKiwiGuide] = useState(false);
   
   // Cleaned up state initialization
-  const [settings, setSettings] = useState<AppSettings>({ defaultRenderMode: 'direct' });
+  const [settings, setSettings] = useState({ defaultRenderMode: 'direct' });
 
   // Initialize frames with default HTTPS IPs
   useEffect(() => {
@@ -614,12 +575,12 @@ function App() {
     return () => window.removeEventListener('resize', checkOrientation);
   }, []);
 
-  const handleUpdateFrame = (id: number, updates: Partial<FrameConfig>) => {
+  const handleUpdateFrame = (id, updates) => {
     setFrames(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
   };
-  const handleMaximize = (id: number) => setFrames(prev => prev.map(f => ({ ...f, isMaximized: f.id === id })));
+  const handleMaximize = (id) => setFrames(prev => prev.map(f => ({ ...f, isMaximized: f.id === id })));
   const handleRestore = () => setFrames(prev => prev.map(f => ({ ...f, isMaximized: false })));
-  const handleClose = (id: number) => setFrames(prev => prev.map(f => f.id === id ? { ...f, url: '', protocol: 'https://', renderMode: settings.defaultRenderMode } : f));
+  const handleClose = (id) => setFrames(prev => prev.map(f => f.id === id ? { ...f, url: '', protocol: 'https://', renderMode: settings.defaultRenderMode } : f));
 
   const isAnyMaximized = frames.some(f => f.isMaximized);
 
