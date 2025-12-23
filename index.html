@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>DeX QuadBrowser v36</title>
+    <title>DeX QuadBrowser v38</title>
     
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#000000" />
@@ -20,8 +20,19 @@
       .frame-container { position: relative; display: flex; flex-direction: column; background: #0a0a0a; overflow: hidden; }
       .maximized { position: absolute !important; inset: 0 !important; z-index: 50 !important; }
       
-      #loading-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #444; font-family: sans-serif; text-align: center; }
-
+      /* Loading Screen Styles */
+      #loading-container { 
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+        display: flex; flex-direction: column; align-items: center; justify-content: center; 
+        z-index: 9999; background: #000; color: #666; font-family: sans-serif;
+      }
+      #error-log { color: #ff5555; font-family: monospace; font-size: 12px; max-width: 80%; white-space: pre-wrap; margin-top: 20px; }
+      #reset-btn { 
+        display: none; margin-top: 30px; padding: 12px 24px; 
+        background: #cc3333; color: white; border: none; border-radius: 8px; 
+        font-weight: bold; font-size: 14px; cursor: pointer;
+      }
+      
       /* DeX/Desktop Friendly Scrollbar */
       ::-webkit-scrollbar { width: 8px; height: 8px; }
       ::-webkit-scrollbar-track { background: #0f0f0f; }
@@ -31,6 +42,45 @@
 
     <script>
       window.process = { env: { NODE_ENV: 'production' } };
+      
+      // Global Error Handler for Mobile Debugging
+      window.onerror = function(msg, url, line, col, error) {
+        const log = document.getElementById('error-log');
+        if(log) log.innerText += `\n[JS Error] ${msg} \n@ ${url}:${line}:${col}`;
+        document.getElementById('loading-msg').innerText = "오류가 발생했습니다.";
+        document.getElementById('reset-btn').style.display = 'block';
+      };
+
+      window.onunhandledrejection = function(e) {
+        const log = document.getElementById('error-log');
+        if(log) log.innerText += `\n[Promise Fail] ${e.reason}`;
+      };
+
+      // Safe Reset Function
+      async function factoryReset() {
+        if(!confirm("캐시와 데이터를 삭제하고 앱을 초기화하시겠습니까?")) return;
+        document.getElementById('loading-msg').innerText = "초기화 중...";
+        
+        try {
+          if (navigator.serviceWorker) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+              await registration.unregister();
+            }
+          }
+          if (window.caches) {
+            const keys = await caches.keys();
+            for (const key of keys) {
+              await caches.delete(key);
+            }
+          }
+          localStorage.clear();
+          sessionStorage.clear();
+        } catch(e) {
+          alert("초기화 실패: " + e);
+        }
+        window.location.reload();
+      }
     </script>
 
     <script type="importmap">
@@ -48,10 +98,26 @@
 </script>
   </head>
   <body class="text-white select-none bg-black">
-    <div id="loading-text">
-      Loading DeX QuadBrowser (v36)...
+    <div id="loading-container">
+      <div id="loading-msg">Loading DeX QuadBrowser (v38)...</div>
+      <div id="error-log"></div>
+      <button id="reset-btn" onclick="factoryReset()">⚠️ 앱 초기화 및 캐시 삭제</button>
     </div>
+    
     <div id="root"></div>
-    <script type="text/babel" data-type="module" src="./index.tsx" data-presets="react,typescript"></script>
+
+    <script>
+      // Show reset button if loading takes too long (> 5 seconds)
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (!root || root.childElementCount === 0) {
+          document.getElementById('loading-msg').innerText = "로딩이 지연되고 있습니다.";
+          document.getElementById('reset-btn').style.display = 'block';
+        }
+      }, 5000);
+    </script>
+    
+    <!-- Cache Buster added to src -->
+    <script type="text/babel" data-type="module" src="./index.tsx?v=38" data-presets="react,typescript"></script>
   </body>
 </html>

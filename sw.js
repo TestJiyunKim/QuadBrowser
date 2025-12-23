@@ -1,10 +1,10 @@
 
-const CACHE_NAME = 'dex-quad-v36';
+const CACHE_NAME = 'dex-quad-v38';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './index.tsx',
+  './index.tsx', // Removed explicit version here to rely on network fetch if possible, or cache normally
   'https://unpkg.com/@babel/standalone/babel.min.js',
   'https://cdn.tailwindcss.com',
   'https://esm.sh/react@18.3.1',
@@ -19,6 +19,7 @@ const ASSETS = [
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
+      // Force reload for core assets
       return Promise.all(
         ASSETS.map(url => {
           return fetch(url, { cache: 'reload' })
@@ -51,6 +52,7 @@ self.addEventListener('fetch', (e) => {
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(response => {
+        // Cache valid responses for next time
         if (response.status === 200 && e.request.method === 'GET') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(c => c.put(e.request, clone));

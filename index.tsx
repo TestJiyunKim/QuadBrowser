@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Gamepad2, Move, ChevronDown, ExternalLink, ShieldAlert, Lock, Unlock, HelpCircle, Layers, Globe, Zap, Settings, Check, AlertTriangle, Clock, Activity, Stethoscope, Wifi, WifiOff, Smartphone, Monitor } from 'lucide-react';
+import { RefreshCw, Maximize2, Minimize2, X, Plus, Minus, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Gamepad2, Move, ChevronDown, ExternalLink, ShieldAlert, Lock, Unlock, HelpCircle, Layers, Globe, Zap, Settings, Check, AlertTriangle, Clock, Activity, Stethoscope, Wifi, WifiOff, Smartphone, Monitor, MousePointer2 } from 'lucide-react';
 
 // --- Types ---
 type RenderMode = 'direct' | 'magic' | 'popup';
@@ -66,7 +66,7 @@ const KiwiGuideModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 
         <div className="bg-gray-800 p-3 rounded border border-gray-700 mt-4 text-xs">
           <p className="text-gray-400">
-            * 팝업 모드를 사용하지 않아도 되므로 DeX에서의 멀티태스킹 효율이 극대화됩니다.
+            * <b>이동 모드(Move)</b>를 켜면 마우스 휠로 화면 줌이 가능합니다. 이때 웹페이지 클릭은 비활성화됩니다.
           </p>
         </div>
       </div>
@@ -386,20 +386,36 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
   };
   const handleReset = () => { setScale(1.0); setPosition({ x: 0, y: 0 }); setIsDragMode(false); };
 
-  const onMouseDown = (e: React.MouseEvent) => { if (isDragMode) { setIsDragging(true); dragStartRef.current = { x: e.clientX, y: e.clientY }; } };
-  const onMouseMove = (e: React.MouseEvent) => {
+  // --- DeX / Pointer Optimization ---
+  const onPointerDown = (e: React.PointerEvent) => { 
+    if (isDragMode) { 
+      setIsDragging(true); 
+      dragStartRef.current = { x: e.clientX, y: e.clientY };
+      try {
+        (e.target as Element).setPointerCapture(e.pointerId);
+      } catch(err) {
+        // Ignore capture errors on some elements
+      }
+    } 
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
     if (!isDragging || !isDragMode) return;
     const dx = e.clientX - dragStartRef.current.x;
     const dy = e.clientY - dragStartRef.current.y;
     setPosition({ x: positionRef.current.x + dx, y: positionRef.current.y + dy });
     dragStartRef.current = { x: e.clientX, y: e.clientY };
   };
-  const onMouseUp = () => setIsDragging(false);
 
-  // Mouse Wheel Zoom Handler
+  const onPointerUp = (e: React.PointerEvent) => {
+    setIsDragging(false);
+    if (isDragMode) {
+       try { (e.target as Element).releasePointerCapture(e.pointerId); } catch(e){}
+    }
+  };
+
   const handleWheel = (e: React.WheelEvent) => {
     if (isDragMode) {
-      // Zoom In if scrolling UP (deltaY < 0), Zoom Out if scrolling DOWN (deltaY > 0)
       const delta = e.deltaY < 0 ? 0.05 : -0.05;
       handleZoom(delta);
     }
@@ -409,17 +425,10 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
   return (
     <div className={`frame-container relative flex flex-col bg-gray-900 border border-gray-800 overflow-hidden ${frame.isMaximized ? "maximized" : spanClass}`}
-         onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseUp} onWheel={handleWheel}>
+         onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp} onWheel={handleWheel}>
       
-      {/* 
-        [Auto-Hide Toolbar Implementation] 
-        1. Invisible Trigger Area (h-4) at the top.
-        2. Toolbar is -translate-y-full (hidden above) by default.
-        3. peer-hover (on trigger) OR hover (on toolbar) -> translate-y-0.
-      */}
-      
-      {/* Trigger Zone (Invisible, top 16px) */}
-      <div className="absolute top-0 left-0 right-0 h-4 z-40 bg-transparent peer transition-none" />
+      {/* Expanded Trigger Area for DeX */}
+      <div className="absolute top-0 left-0 right-0 h-6 z-40 bg-transparent peer transition-none" />
 
       {/* Toolbar */}
       <div className="toolbar absolute top-0 left-0 right-0 h-10 z-50 bg-gray-950/90 border-b border-gray-700 flex items-center px-2 gap-2 backdrop-blur-md transition-all duration-300 transform -translate-y-full opacity-0 peer-hover:translate-y-0 peer-hover:opacity-100 hover:translate-y-0 hover:opacity-100 focus-within:translate-y-0 focus-within:opacity-100">
@@ -534,10 +543,13 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
       {/* Main Viewport */}
       <div className="flex-grow relative bg-gray-950 overflow-hidden flex items-center justify-center" 
-           onMouseDown={onMouseDown}>
+           onPointerDown={onPointerDown}>
         
         {isDragMode && (
-          <div className="absolute inset-0 z-20 cursor-move bg-blue-500/5 border-2 border-dashed border-blue-500/20"></div>
+          <div className="absolute inset-0 z-20 cursor-move bg-blue-500/5 border-2 border-dashed border-blue-500/20 flex items-center justify-center pointer-events-none">
+             {/* Indicator that Drag Mode is Active */}
+             <MousePointer2 size={48} className="text-blue-500/20" />
+          </div>
         )}
 
         {frame.url && frame.url !== 'about:blank' ? (
@@ -563,6 +575,7 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
                       key={key}
                       src={displayUrl}
                       className="w-full h-full border-0 block"
+                      style={{ pointerEvents: isDragMode ? 'none' : 'auto' }}
                       sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock allow-downloads"
                       referrerPolicy="no-referrer"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -588,24 +601,21 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showKiwiGuide, setShowKiwiGuide] = useState(false);
   
-  // Global Settings State: Default to 'direct' for Kiwi optimization
   const [settings, setSettings] = useState<AppSettings>({
     defaultRenderMode: 'direct' 
   });
 
-  // Initialize frames with default HTTPS IPs
   useEffect(() => {
+    // Hide loading screen when React mounts
+    const loader = document.getElementById('loading-container');
+    if (loader) loader.style.display = 'none';
+
     setFrames([
       { id: 1, protocol: 'https://', url: '172.16.8.91/remote-access', renderMode: settings.defaultRenderMode },
       { id: 2, protocol: 'https://', url: '172.16.8.92/remote-access', renderMode: settings.defaultRenderMode },
       { id: 3, protocol: 'https://', url: '172.16.8.93/remote-access', renderMode: settings.defaultRenderMode },
       { id: 4, protocol: 'https://', url: '172.16.8.94/remote-access', renderMode: settings.defaultRenderMode },
     ]);
-  }, []);
-
-  useEffect(() => {
-    const loader = document.getElementById('loading-text');
-    if (loader) loader.style.display = 'none';
 
     const checkOrientation = () => setIsPortrait(window.innerHeight > window.innerWidth);
     checkOrientation();
@@ -679,5 +689,16 @@ function App() {
   );
 }
 
-const root = createRoot(document.getElementById('root')!);
-root.render(<React.StrictMode><App /></React.StrictMode>);
+try {
+  const rootElement = document.getElementById('root');
+  if (rootElement) {
+    const root = createRoot(rootElement);
+    root.render(<React.StrictMode><App /></React.StrictMode>);
+  } else {
+    throw new Error("Root element not found");
+  }
+} catch (e) {
+  console.error("React mounting failed:", e);
+  const log = document.getElementById('error-log');
+  if(log) log.innerText += `\n[React Error] ${e}`;
+}
