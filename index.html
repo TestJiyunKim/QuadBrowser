@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>DeX QuadBrowser Pro v46</title>
+    <title>DeX QuadBrowser v50</title>
     
     <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#000000" />
@@ -12,128 +12,46 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <!-- Error Handling -->
-    <script>
-      function showError(title, details) {
-        const loader = document.getElementById('loading-container');
-        if (loader) loader.style.display = 'none';
-        
-        const errDiv = document.createElement('div');
-        errDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#111;color:#ff5555;padding:20px;z-index:999999;font-family:monospace;white-space:pre-wrap;overflow:auto;font-size:14px;';
-        errDiv.innerHTML = '<h2 style="border-bottom:1px solid #555;padding-bottom:10px;">' + title + '</h2>' + details;
-        document.body.appendChild(errDiv);
-      }
-
-      window.onerror = function(msg, url, line, col, error) {
-        let details = '<strong>Message:</strong> ' + msg + '\n\n' +
-                      '<strong>Location:</strong> ' + url + ':' + line + ':' + col + '\n\n' +
-                      '<strong>Stack:</strong>\n' + (error ? error.stack : 'No stack trace available');
-        
-        if (msg === 'Script error.') {
-           details += '\n\n<strong>Hint:</strong> A "Script error" with no details usually means a Cross-Origin (CORS) issue or a syntax error in a module loaded from a CDN. Check the browser console (F12) for the exact error.';
-        }
-        showError('SYSTEM ERROR', details);
-        return false;
-      };
-
-      window.addEventListener('unhandledrejection', function(event) {
-        showError('UNHANDLED PROMISE REJECTION', '<strong>Reason:</strong> ' + event.reason);
-      });
-
-      // Failsafe
-      setTimeout(() => {
-        const loader = document.getElementById('loading-container');
-        if (loader && loader.style.display !== 'none') {
-          console.warn('Forcing loader close due to timeout');
-          loader.style.display = 'none'; 
-        }
-      }, 5000);
-    </script>
-
-    <script src="https://unpkg.com/@babel/standalone@7.23.12/babel.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.tailwindcss.com" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap');
+      html, body, #root { height: 100%; width: 100%; margin: 0; padding: 0; background: #000; overflow: hidden; }
+      .frame-container { position: relative; display: flex; flex-direction: column; background: #0a0a0a; overflow: hidden; }
+      .maximized { position: absolute !important; inset: 0 !important; z-index: 50 !important; }
       
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      
-      html, body { 
-        height: 100vh;
-        height: -webkit-fill-available;
-        width: 100vw;
-        background: #000; 
-        overflow: hidden; 
-        font-family: 'Inter', -apple-system, sans-serif;
-        color: #f8fafc;
-      }
-      
-      #root { 
-        height: 100%; 
-        width: 100%; 
-        display: flex; 
-        flex-direction: column; 
-      }
+      #loading-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #444; font-family: sans-serif; text-align: center; }
 
-      .grid-master { 
-        display: grid !important; 
-        flex-grow: 1; 
-        gap: 6px; 
-        padding: 6px; 
-        background: #000; 
-        overflow: hidden;
-      }
-      
-      @media (orientation: landscape) {
-        .grid-master { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
-      }
-      @media (orientation: portrait) {
-        .grid-master { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); }
-      }
-
-      .frame-item { 
-        background: #0a0a0a; 
-        border: 1px solid rgba(255,255,255,0.1); 
-        display: flex; 
-        flex-direction: column; 
-        overflow: hidden; 
-        border-radius: 8px;
-        position: relative;
-      }
-
-      iframe { width: 100%; height: 100%; border: none; display: block; background: #000; }
-
-      #loading-container { 
-        position: fixed; inset: 0; display: flex; flex-direction: column; 
-        align-items: center; justify-content: center; z-index: 9999; background: #000; 
-      }
-      .loader-bar { width: 120px; height: 2px; background: #111; position: relative; overflow: hidden; margin-top: 15px; }
-      .loader-progress { position: absolute; width: 40%; height: 100%; background: #3b82f6; animation: loading 1s infinite linear; }
-      @keyframes loading { 0% { left: -40%; } 100% { left: 100%; } }
+      /* DeX/Desktop Friendly Scrollbar */
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: #0f0f0f; }
+      ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #555; }
     </style>
+
+    <script>
+      window.process = { env: { NODE_ENV: 'production' } };
+    </script>
 
     <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@18.3.1",
-    "react-dom": "https://esm.sh/react-dom@18.3.1?deps=react@18.3.1",
-    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?deps=react@18.3.1",
-    "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
-    "lucide-react": "https://esm.sh/lucide-react@0.292.0?deps=react@18.3.1",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
+    "react/": "https://esm.sh/react@18.3.1/",
+    "react-dom": "https://esm.sh/react-dom@18.3.1",
+    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.292.0?external=react,react-dom",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
   }
 }
 </script>
   </head>
-  <body>
-    <div id="loading-container">
-      <div style="font-size: 11px; font-weight: bold; color: #3b82f6; letter-spacing: 3px;">SYSTEM BOOTING</div>
-      <div class="loader-bar"><div class="loader-progress"></div></div>
+  <body class="text-white select-none bg-black">
+    <div id="loading-text">
+      Loading DeX QuadBrowser (v50)...
     </div>
-    
     <div id="root"></div>
-
-    <script type="text/babel" data-type="module" data-presets="react,typescript" src="./index.tsx?v=46" crossorigin="anonymous"></script>
+    <script type="text/babel" data-type="module" src="./index.tsx?v=50" data-presets="react,typescript"></script>
   </body>
 </html>
