@@ -86,8 +86,8 @@ interface TroubleshootModalProps {
 }
 
 const TroubleshootModal: React.FC<TroubleshootModalProps> = ({ frame, onClose, onUpdateFrame }) => {
-  // Fix Babel parsing error by using 'as' casting instead of generics
-  const [status, setStatus] = useState('checking' as 'checking' | 'ok' | 'error');
+  // Simplified state initialization to avoid Babel parsing errors
+  const [status, setStatus] = useState('checking'); 
   const [diagMsg, setDiagMsg] = useState('');
 
   useEffect(() => {
@@ -187,8 +187,8 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdateSettings, onClose, onOpenKiwiGuide }) => {
-  // Fix Babel parsing error by using 'as' casting instead of generics
-  const [netStatus, setNetStatus] = useState({} as Record<number, string>);
+  // Simplified state initialization
+  const [netStatus, setNetStatus] = useState({});
   const [checking, setChecking] = useState(false);
 
   const runSystemCheck = async () => {
@@ -214,7 +214,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
       <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Settings size={20} /> System Settings (v63)
+            <Settings size={20} /> System Settings (v64)
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={20}/></button>
         </div>
@@ -259,9 +259,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
                      <span className="text-[10px] text-gray-400 truncate max-w-[80px]">{f.url || 'Empty'}</span>
                    </div>
                    <div className="text-[10px] font-bold">
-                      {netStatus[f.id] === 'Online' && <span className="text-green-400">OK</span>}
-                      {netStatus[f.id] === 'Offline/Error' && <span className="text-red-400">ERR</span>}
-                      {!netStatus[f.id] && <span className="text-gray-600">-</span>}
+                      {(netStatus as any)[f.id] === 'Online' && <span className="text-green-400">OK</span>}
+                      {(netStatus as any)[f.id] === 'Offline/Error' && <span className="text-red-400">ERR</span>}
+                      {!(netStatus as any)[f.id] && <span className="text-gray-600">-</span>}
                    </div>
                  </div>
                ))}
@@ -585,13 +585,13 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
 // --- App Component ---
 function App() {
-  // Fix Babel parsing error by using 'as' casting instead of generics
-  const [frames, setFrames] = useState([] as FrameConfig[]);
+  // Simplified state initialization
+  const [frames, setFrames] = useState<FrameConfig[]>([]);
   const [isPortrait, setIsPortrait] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showKiwiGuide, setShowKiwiGuide] = useState(false);
   
-  // Global Settings State: Default to 'direct' for Kiwi optimization
+  // Simplified state initialization
   const [settings, setSettings] = useState({ defaultRenderMode: 'direct' } as AppSettings);
 
   // Initialize frames with default HTTPS IPs
