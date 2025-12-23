@@ -86,7 +86,6 @@ interface TroubleshootModalProps {
 }
 
 const TroubleshootModal: React.FC<TroubleshootModalProps> = ({ frame, onClose, onUpdateFrame }) => {
-  // Simplified state initialization to avoid Babel parsing errors
   const [status, setStatus] = useState('checking'); 
   const [diagMsg, setDiagMsg] = useState('');
 
@@ -187,8 +186,7 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdateSettings, onClose, onOpenKiwiGuide }) => {
-  // Simplified state initialization
-  const [netStatus, setNetStatus] = useState({});
+  const [netStatus, setNetStatus] = useState<any>({});
   const [checking, setChecking] = useState(false);
 
   const runSystemCheck = async () => {
@@ -214,7 +212,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
       <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Settings size={20} /> System Settings (v64)
+            <Settings size={20} /> System Settings (v65)
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={20}/></button>
         </div>
@@ -259,9 +257,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
                      <span className="text-[10px] text-gray-400 truncate max-w-[80px]">{f.url || 'Empty'}</span>
                    </div>
                    <div className="text-[10px] font-bold">
-                      {(netStatus as any)[f.id] === 'Online' && <span className="text-green-400">OK</span>}
-                      {(netStatus as any)[f.id] === 'Offline/Error' && <span className="text-red-400">ERR</span>}
-                      {!(netStatus as any)[f.id] && <span className="text-gray-600">-</span>}
+                      {netStatus[f.id] === 'Online' && <span className="text-green-400">OK</span>}
+                      {netStatus[f.id] === 'Offline/Error' && <span className="text-red-400">ERR</span>}
+                      {!netStatus[f.id] && <span className="text-gray-600">-</span>}
                    </div>
                  </div>
                ))}
@@ -272,10 +270,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ settings, frames, onUpdat
           <div>
             <label className="text-gray-200 font-bold text-sm block mb-2">기본 렌더링 모드</label>
             <div className="grid grid-cols-3 gap-2">
-              {(['direct', 'magic', 'popup'] as RenderMode[]).map(mode => (
+              {(['direct', 'magic', 'popup']).map(mode => (
                 <button
                   key={mode}
-                  onClick={() => onUpdateSettings({ ...settings, defaultRenderMode: mode })}
+                  onClick={() => onUpdateSettings({ ...settings, defaultRenderMode: mode as RenderMode })}
                   className={`py-2 px-1 rounded border text-xs font-bold uppercase flex flex-col items-center gap-1 ${
                     settings.defaultRenderMode === mode 
                       ? 'bg-blue-900/40 border-blue-500 text-blue-400' 
@@ -585,22 +583,21 @@ const BrowserFrame: React.FC<BrowserFrameProps> = ({
 
 // --- App Component ---
 function App() {
-  // Simplified state initialization
   const [frames, setFrames] = useState<FrameConfig[]>([]);
   const [isPortrait, setIsPortrait] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showKiwiGuide, setShowKiwiGuide] = useState(false);
   
-  // Simplified state initialization
-  const [settings, setSettings] = useState({ defaultRenderMode: 'direct' } as AppSettings);
+  // Cleaned up state initialization
+  const [settings, setSettings] = useState({ defaultRenderMode: 'direct' });
 
   // Initialize frames with default HTTPS IPs
   useEffect(() => {
     setFrames([
-      { id: 1, protocol: 'https://', url: '172.16.8.91', renderMode: settings.defaultRenderMode },
-      { id: 2, protocol: 'https://', url: '172.16.8.92', renderMode: settings.defaultRenderMode },
-      { id: 3, protocol: 'https://', url: '172.16.8.93', renderMode: settings.defaultRenderMode },
-      { id: 4, protocol: 'https://', url: '172.16.8.94', renderMode: settings.defaultRenderMode },
+      { id: 1, protocol: 'https://', url: '172.16.8.91', renderMode: settings.defaultRenderMode as RenderMode },
+      { id: 2, protocol: 'https://', url: '172.16.8.92', renderMode: settings.defaultRenderMode as RenderMode },
+      { id: 3, protocol: 'https://', url: '172.16.8.93', renderMode: settings.defaultRenderMode as RenderMode },
+      { id: 4, protocol: 'https://', url: '172.16.8.94', renderMode: settings.defaultRenderMode as RenderMode },
     ]);
   }, []);
 
@@ -620,7 +617,7 @@ function App() {
   };
   const handleMaximize = (id: number) => setFrames(prev => prev.map(f => ({ ...f, isMaximized: f.id === id })));
   const handleRestore = () => setFrames(prev => prev.map(f => ({ ...f, isMaximized: false })));
-  const handleClose = (id: number) => setFrames(prev => prev.map(f => f.id === id ? { ...f, url: '', protocol: 'https://', renderMode: settings.defaultRenderMode } : f));
+  const handleClose = (id: number) => setFrames(prev => prev.map(f => f.id === id ? { ...f, url: '', protocol: 'https://', renderMode: settings.defaultRenderMode as RenderMode } : f));
 
   const isAnyMaximized = frames.some(f => f.isMaximized);
 
@@ -639,7 +636,7 @@ function App() {
               key={frame.id}
               frame={frame}
               spanClass="col-span-1 row-span-1"
-              settings={settings}
+              settings={settings as AppSettings}
               onUpdateFrame={handleUpdateFrame}
               onMaximize={handleMaximize}
               onRestore={handleRestore}
@@ -663,7 +660,7 @@ function App() {
         {/* Settings Modal */}
         {showSettings && (
           <SettingsModal 
-            settings={settings}
+            settings={settings as AppSettings}
             frames={frames} 
             onUpdateSettings={setSettings} 
             onClose={() => setShowSettings(false)}
