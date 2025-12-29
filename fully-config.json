@@ -1,0 +1,16 @@
+
+{
+  "webviewMixedContent": 0,
+  "desktopMode": true,
+  "loadInOverview": true,
+  "removeXframeOptionsUrl": "*",
+  "ignoreSslErrors": true,
+  "setCpuWakelock": true,
+  "setWifiWakelock": true,
+  "keepScreenOn": true,
+  "screenOrientation": 1,
+  "autoplayVideos": true,
+  "enableZoom": true,
+  "initialScale": 100,
+  "webSecurity": false
+}

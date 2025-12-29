@@ -3,528 +3,746 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DeX QuadBrowser v75 (Offline)</title>
+    <title>DeX QuadBrowser v106 (Direct-Injector)</title>
     <link rel="manifest" href="./manifest.json">
     <style>
-        /* --- OFFLINE CSS (Tailwind Replacement) --- */
         :root {
             --bg-body: #000000;
-            --bg-panel: #111827; /* gray-900 */
-            --bg-toolbar: #0f172a; /* slate-900 */
-            --border: #374151; /* gray-700 */
-            --text-main: #f3f4f6; /* gray-100 */
-            --text-muted: #9ca3af; /* gray-400 */
-            --accent: #2563eb; /* blue-600 */
-            --accent-hover: #1d4ed8;
-            --danger: #ef4444; /* red-500 */
-            --success: #22c55e; /* green-500 */
-            --warn: #f59e0b; /* amber-500 */
+            --bg-panel: #111827;
+            --border: #374151;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent: #2563eb;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warn: #f59e0b;
+            --heart: #ec4899;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body { margin: 0; background: var(--bg-body); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; height: 100vh; width: 100vw; }
         
-        /* Layout */
-        #app { display: grid; width: 100%; height: 100%; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1px; background: var(--border); }
-        body.portrait #app { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); }
-        body.maximized-view #app { display: block; }
+        #app { display: grid; width: 100%; height: 100%; gap: 1px; background: var(--border); transition: all 0.3s ease; }
+        #app.count-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+        #app.count-3 { grid-template-columns: 1.2fr 1fr; grid-template-rows: 1fr 1fr; }
+        #app.count-3 > .frame:nth-child(1) { grid-row: 1 / span 2; border-right: 1px solid var(--border); }
+        #app.count-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+        #app.count-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
         
-        /* Frame */
-        .frame { position: relative; background: #000; display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0; }
-        .frame.maximized { position: absolute; inset: 0; z-index: 100; }
-        .frame.hidden-frame { display: none; }
+        body.portrait #app.count-4 { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); }
+        body.portrait #app.count-3 { grid-template-columns: 1fr; grid-template-rows: 1.5fr 1fr 1fr; }
+        body.portrait #app.count-3 > .frame:nth-child(1) { grid-row: auto; grid-column: span 1; border-right: none; border-bottom: 1px solid var(--border); }
+        body.portrait #app.count-2 { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
 
-        /* Toolbar - Auto Hide Logic */
-        .hover-trigger { position: absolute; top: 0; left: 0; right: 0; height: 20px; z-index: 30; }
+        .frame { position: relative; background: #000; display: flex; flex-direction: column; overflow: hidden; }
+        .frame.maximized { position: fixed; inset: 0; z-index: 1000; width: 100vw; height: 100vh; }
+
         .toolbar {
-            position: absolute; top: 0; left: 0; right: 0; z-index: 40; height: 44px;
-            background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid var(--border);
-            backdrop-filter: blur(4px);
-            transform: translateY(-100%); transition: transform 0.2s ease-in-out;
-            display: flex; align-items: center; padding: 0 8px; gap: 6px;
+            position: absolute; top: 0; left: 0; right: 0; z-index: 40; height: 46px;
+            background: rgba(15, 23, 42, 0.96); border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            transform: translateY(-100%); transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; align-items: center; padding: 0 4px; gap: 4px;
         }
-        .toolbar.visible, 
-        .hover-trigger:hover + .toolbar, 
-        .toolbar:hover,
-        .toolbar:focus-within { transform: translateY(0); }
+        .hover-trigger { position: absolute; top: 0; left: 0; right: 0; height: 25px; z-index: 30; }
+        .toolbar.visible, .hover-trigger:hover + .toolbar, .toolbar:hover, .toolbar:focus-within { transform: translateY(0); }
 
-        /* Controls */
-        .badge { background: var(--accent); color: white; width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        
-        .btn { background: transparent; border: 1px solid transparent; color: var(--text-muted); cursor: pointer; width: 28px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+        .badge { background: var(--accent); color: white; width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; flex-shrink: 0; }
+        .btn { background: transparent; border: 1px solid transparent; color: var(--text-muted); cursor: pointer; width: 36px; height: 36px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .btn:hover { color: white; background: rgba(255,255,255,0.1); }
-        .btn.active { color: var(--accent); border-color: var(--accent); background: rgba(37, 99, 235, 0.1); }
         .btn-danger { color: var(--danger); }
-        .btn-mode { font-size: 10px; width: auto; padding: 0 6px; border: 1px solid var(--border); font-weight: bold; text-transform: uppercase; }
+        .btn-mode { font-size: 10px; width: auto; padding: 0 6px; border: 1px solid var(--border); font-weight: bold; text-transform: uppercase; height: 28px; }
 
-        .url-wrapper { flex: 1; display: flex; align-items: center; background: #1f2937; border: 1px solid var(--border); border-radius: 4px; height: 30px; padding: 0 8px; margin: 0 4px; transition: border-color 0.2s; }
-        .url-wrapper:focus-within { border-color: var(--accent); }
-        .url-input { background: transparent; border: none; color: white; width: 100%; font-family: monospace; font-size: 13px; }
-        .icon-lock { color: var(--success); margin-right: 6px; }
+        .url-wrapper { flex: 1; display: flex; align-items: center; background: #1f2937; border: 1px solid var(--border); border-radius: 4px; height: 34px; padding: 0 8px; margin: 0; min-width: 0; overflow: hidden; }
+        .url-input { background: transparent; border: none; color: white; width: 100%; font-family: 'Courier New', monospace; font-size: 14px; font-weight: 500; }
+        .btn-go { width: 28px; height: 28px; background: rgba(255,255,255,0.1); border-radius: 4px; color: var(--success); display: flex; align-items: center; justify-content: center; cursor: pointer; margin-left: 4px; }
 
-        /* Viewport */
         .viewport { flex: 1; position: relative; overflow: hidden; background: #000; }
-        .content-wrapper { width: 100%; height: 100%; transform-origin: center; transition: transform 0.1s; }
-        iframe { width: 100%; height: 100%; border: none; display: block; }
+        .content-wrapper { width: 100%; height: 100%; transform-origin: center; }
+        iframe { width: 100%; height: 100%; border: none; display: block; background: #000; }
         
-        .drag-overlay { position: absolute; inset: 0; z-index: 10; background: rgba(37,99,235,0.05); border: 2px dashed var(--accent); cursor: move; display: none; }
-        .frame.dragging .drag-overlay { display: block; }
+        .drag-overlay { position: absolute; inset: 0; z-index: 10; background: rgba(37,99,235,0.05); border: 2px dashed var(--accent); cursor: default; display: none; }
+        .frame.dragging .drag-overlay { display: block; cursor: grab; }
 
-        /* Modals */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.open { display: flex; }
-        .modal-box { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 400px; padding: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
+        .modal-box { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 480px; padding: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); max-height: 90vh; overflow-y: auto; }
         
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-        .modal-title { font-weight: bold; font-size: 18px; display: flex; align-items: center; gap: 8px; color: white; }
-        
-        .card { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 8px; }
-        .row { display: flex; justify-content: space-between; align-items: center; }
-        
-        .btn-block { display: block; width: 100%; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; margin-top: 10px; cursor: pointer; }
-        .btn-block:hover { background: var(--accent-hover); }
-
-        /* Control Pad */
-        .control-pad { position: absolute; bottom: 16px; right: 16px; background: rgba(17, 24, 39, 0.95); border: 1px solid var(--border); padding: 8px; border-radius: 12px; z-index: 50; display: none; width: 140px; }
+        .control-pad { position: absolute; bottom: 16px; right: 16px; background: rgba(17, 24, 39, 0.95); border: 1px solid var(--border); padding: 8px; border-radius: 12px; z-index: 50; display: none; width: 240px; }
         .control-pad.show { display: block; }
         .pad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
-        .pad-btn { background: #374151; border: none; border-radius: 4px; height: 36px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .pad-btn:active { background: var(--accent); }
+        .pad-btn { background: #374151; border: 1px solid transparent; border-radius: 4px; height: 36px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; }
 
-        /* FAB Settings & Auto Hide Logic */
-        .fab-trigger { position: fixed; bottom: 0; left: 0; width: 80px; height: 80px; z-index: 149; } /* Trigger Zone */
+        @keyframes pulse-red { 0% { color: var(--text-muted); } 50% { color: var(--heart); transform: scale(1.1); } 100% { color: var(--text-muted); } }
+        .btn.heartbeat-active { animation: pulse-red 2s infinite; color: var(--heart) !important; }
+
+        /* --- UI TRIGGERS --- */
+        .reset-trigger { position: fixed; top: 0; right: 0; width: 80px; height: 80px; z-index: 9000; display: flex; align-items: flex-start; justify-content: flex-end; padding: 20px; }
+        .fab-reset { width: 32px; height: 32px; background: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; opacity: 0; transform: translateX(20px) scale(0.8); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; }
+        .reset-trigger:hover .fab-reset { opacity: 1; transform: translateX(0) scale(1); pointer-events: auto; }
+
+        .controls-trigger { position: fixed; bottom: 0; left: 0; width: 80px; height: 160px; z-index: 100; display: flex; align-items: flex-end; padding: 20px; }
+        .fab-group { display: flex; flex-direction: column-reverse; gap: 16px; align-items: center; }
+        .fab-main { width: 48px; height: 48px; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transform: translateX(-20px) scale(0.8); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; }
+        .fab-action { width: 40px; height: 40px; border-radius: 50%; background: var(--bg-panel); border: 1px solid var(--success); color: var(--success); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transform: translateX(-20px) scale(0.8); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) 0.05s; pointer-events: none; } 
+        .controls-trigger:hover .fab-main, .controls-trigger:hover .fab-action { opacity: 1; transform: translateX(0) scale(1); pointer-events: auto; }
+        .fab-main:hover { background: var(--accent); color: white; border-color: var(--accent); }
+        .fab-action:hover { background: var(--success); color: black; }
+        .fab-action.disabled { display: none; }
+
+        svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; fill: none; pointer-events: none; }
         
-        .fab-settings { 
-            position: fixed; bottom: 20px; left: 20px; width: 48px; height: 48px; border-radius: 50%; 
-            background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-muted); 
-            display: flex; align-items: center; justify-content: center; z-index: 150; 
-            cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5); 
-            transform: translateY(200%); /* Hidden by default */
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s, color 0.2s;
-        }
-
-        /* Reveal on hover (Trigger or Button itself) */
-        .fab-trigger:hover + .fab-settings,
-        .fab-settings:hover {
-            transform: translateY(0);
-        }
-
-        /* Active/Hover Style */
-        .fab-settings:hover { 
-            background: var(--accent); color: white; 
-            transform: scale(1.1) rotate(45deg); 
-        }
-
-        /* Icons */
-        svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+        #error-log { position: fixed; top: 0; left: 0; right: 0; background: #7f1d1d; color: #fca5a5; font-size: 12px; padding: 8px; z-index: 9999; display: none; font-family: monospace; white-space: pre-wrap; }
+        .input-dark { background: #1f2937; border: 1px solid #374151; color: white; padding: 6px 8px; width: 100%; border-radius: 4px; font-size: 13px; margin-bottom: 4px; }
+        .row { display: flex; justify-content: space-between; align-items: center; }
+        .card { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 8px; }
+        
+        #init-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #6b7280; font-size: 14px; text-align: center; }
     </style>
 </head>
 <body>
-
-    <div id="app"></div>
-
-    <!-- Floating Settings Button (Auto Hide) -->
-    <div class="fab-trigger"></div> <!-- Invisible trigger zone -->
-    <div class="fab-settings" onclick="openSettings()">
-        <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+    <div id="error-log"></div>
+    
+    <div class="reset-trigger">
+        <div class="fab-reset" onclick="hardReset()" title="Emergency Reset">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </div>
     </div>
 
-    <!-- Settings Modal -->
+    <div id="app" class="count-4">
+        <div id="init-msg">System Initializing...<br><small>If stuck, check upper-right corner for reset.</small></div>
+    </div>
+
+    <div class="controls-trigger">
+        <div class="fab-group">
+            <div class="fab-main" onclick="openSettings()" title="Settings">
+                <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </div>
+            <div id="btn-add-frame" class="fab-action" onclick="addFrame()" title="Add Frame">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-settings" class="modal-overlay">
         <div class="modal-box">
-            <div class="modal-header">
-                <div class="modal-title">Settings (v75)</div>
-                <button class="btn" onclick="closeModal('modal-settings')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            <div class="row" style="border-bottom: 1px solid #374151; padding-bottom:12px; margin-bottom:16px;">
+                <div style="font-weight:bold; font-size:18px;">Settings</div>
+                <button class="btn" onclick="closeModal('modal-settings')">X</button>
             </div>
-            
-            <div class="card" onclick="openModal('modal-kiwi')" style="cursor: pointer; border-color: var(--success);">
-                <div style="color: var(--success); font-weight: bold; font-size: 12px; margin-bottom: 4px;">RECOMMENDED</div>
-                <div style="font-weight: bold; margin-bottom: 2px;">Kiwi Browser Optimization</div>
-                <div style="font-size: 11px; color: var(--text-muted);">Click here if screens are white or refused.</div>
-            </div>
-
-            <div style="margin-top: 16px;">
+            <div>
                 <div class="row" style="margin-bottom: 8px;">
                     <span style="font-weight: bold; font-size: 14px;">Network Status</span>
-                    <button class="btn" style="width:auto; padding:0 8px; font-size:11px;" onclick="checkAllNetworks()">SCAN ALL</button>
+                    <button class="btn" style="width:auto; padding:0 8px; font-size:11px;" onclick="checkAllNetworks()">SCAN</button>
                 </div>
                 <div id="network-list"></div>
             </div>
-
             <div style="margin-top: 16px;">
                 <span style="font-weight: bold; font-size: 14px; display:block; margin-bottom: 8px;">Global Render Mode</span>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;">
                     <button class="btn-mode" onclick="setGlobalMode('direct')">DIRECT</button>
-                    <button class="btn-mode" onclick="setGlobalMode('magic')">MAGIC</button>
                     <button class="btn-mode" onclick="setGlobalMode('popup')">POPUP</button>
+                    <button class="btn-mode" onclick="setGlobalMode('inject')">INJECT</button>
+                    <button class="btn-mode" onclick="setGlobalMode('write')">WRITE</button>
+                    <button class="btn-mode" onclick="setGlobalMode('blob')">BLOB</button>
                 </div>
+                <div style="font-size:11px; color:#9ca3af; margin-top:4px;">* 'Direct' is recommended for Blazor apps in Kiosk mode.</div>
             </div>
+            <button class="pad-btn" onclick="resetAllFrames()" style="width:100%; background: var(--success); margin-top: 20px;">RESTORE DEFAULTS</button>
         </div>
     </div>
 
-    <!-- Kiwi Guide Modal -->
-    <div id="modal-kiwi" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-header">
-                <div class="modal-title" style="color: var(--success);">Kiwi Browser Guide</div>
-                <button class="btn" onclick="closeModal('modal-kiwi')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
-            </div>
-            <div style="font-size: 13px; line-height: 1.5; color: #d1d5db;">
-                <p style="margin-bottom: 10px;">For the best experience in internal networks:</p>
-                <ol style="padding-left: 20px; margin-bottom: 15px;">
-                    <li>Install <b>"Ignore X-Frame-Options"</b> extension in Kiwi.</li>
-                    <li>Accept <b>SSL Certificates</b> for each internal IP.</li>
-                    <li>Use <b>DIRECT</b> mode after setup.</li>
-                </ol>
-                <button class="btn-block" onclick="closeModal('modal-kiwi')">Got it</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Troubleshoot Modal -->
     <div id="modal-trouble" class="modal-overlay">
         <div class="modal-box">
-            <div class="modal-header">
-                <div class="modal-title" style="color: var(--warn);">Connection Diagnose</div>
-                <button class="btn" onclick="closeModal('modal-trouble')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            <div class="row" style="margin-bottom:12px;">
+                <div class="modal-title" style="color: var(--warn);">Diagnose</div>
+                <button class="btn" onclick="closeModal('modal-trouble')">X</button>
             </div>
             <div id="trouble-content"></div>
         </div>
     </div>
 
 <script>
-    // --- ICONS (SVG Strings) ---
-    const ICONS = {
-        refresh: '<path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>',
-        move: '<polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line>',
+    window.onerror = function(msg, url, line, col, error) {
+        var el = document.getElementById('error-log');
+        if(el) { el.style.display = 'block'; el.innerHTML += "ERR: " + msg + " (L" + line + ")\n"; }
+        return false;
+    };
+    
+    function hardReset() {
+        if(confirm('Clear all data and reload?')) { try { localStorage.clear(); } catch(e){} location.reload(); }
+    }
+
+    var ICONS = {
+        refresh: '<path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>',
+        move: '<polyline points="5 9 2 12 5 15M9 5 12 2 15 5M15 19 12 22 9 19M19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line>',
         plus: '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
         minus: '<line x1="5" y1="12" x2="19" y2="12"></line>',
-        maximize: '<polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line>',
-        minimize: '<polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line>',
+        max: '<polyline points="15 3 21 3 21 9M9 21 3 21 3 15"></polyline>',
+        min: '<polyline points="4 14 10 14 10 20M20 10 14 10 14 4"></polyline>',
         close: '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>',
         lock: '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>',
-        gamepad: '<line x1="6" y1="12" x2="10" y2="12"></line><line x1="8" y1="10" x2="8" y2="14"></line><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line><rect x="2" y="6" width="20" height="12" rx="2"></rect>',
-        stethoscope: '<path d="M4.8 2.3A.3.3 0 0 1 5 2h14a.3.3 0 0 1 .2.3v3.4a.3.3 0 0 1-.2.3.3.3 0 0 0-.1.6 3 3 0 0 1-1.4 3.4L13 12v6h2a2 2 0 0 1 2 2v2H7v-2a2 2 0 0 1 2-2h2v-6l-4.5-2a3 3 0 0 1-1.4-3.4.3.3 0 0 0-.1-.6.3.3 0 0 1-.2-.3V2.3z"></path>',
-        arrowUp: '<line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline>',
-        arrowDown: '<line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>',
-        arrowLeft: '<line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline>',
-        arrowRight: '<line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline>',
-        globe: '<circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>',
-        zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>',
-        external: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>'
+        gamepad: '<rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="15.5" cy="13" r="1"></circle><circle cx="18.5" cy="11" r="1"></circle>',
+        doc: '<path d="M4.8 2.3A.3.3 0 0 1 5 2h14a.3.3 0 0 1 .2.3v3.4a.3.3 0 0 1-.2.3.3.3 0 0 0-.1.6 3 3 0 0 1-1.4 3.4L13 12v6h2a2 2 0 0 1 2 2v2H7v-2a2 2 0 0 1 2-2h2v-6l-4.5-2a3 3 0 0 1-1.4-3.4.3.3 0 0 0-.1-.6.3.3 0 0 1-.2-.3V2.3z"></path>',
+        arrowUp: '<polyline points="18 15 12 9 6 15"></polyline>',
+        arrowDown: '<polyline points="6 9 12 15 18 9"></polyline>',
+        arrowLeft: '<polyline points="15 18 9 12 15 6"></polyline>',
+        arrowRight: '<polyline points="9 6 15 12 9 18"></polyline>',
+        go: '<line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline>',
+        key: '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>',
+        clock: '<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>',
+        external: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>',
+        heart: '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>'
     };
 
-    function icon(name) { return `<svg viewBox="0 0 24 24">${ICONS[name] || ''}</svg>`; }
+    var DEFAULT_FRAMES = [
+        { id: 1, url: '172.16.8.91/remote-access', mode: 'direct', scale: 1, x:0, y:0, refreshRate: 0, keepAlive: false, user: 'HHI', pass: 'HiMSEN01', authMode: 'form' },
+        { id: 2, url: '172.16.8.92/remote-access', mode: 'direct', scale: 1, x:0, y:0, refreshRate: 0, keepAlive: false, user: 'HHI', pass: 'HiMSEN01', authMode: 'form' },
+        { id: 3, url: '172.16.8.93/remote-access', mode: 'direct', scale: 1, x:0, y:0, refreshRate: 0, keepAlive: false, user: 'HHI', pass: 'HiMSEN01', authMode: 'form' },
+        { id: 4, url: '172.16.8.94/remote-access', mode: 'direct', scale: 1, x:0, y:0, refreshRate: 0, keepAlive: false, user: 'HHI', pass: 'HiMSEN01', authMode: 'form' }
+    ];
 
-    // --- STATE ---
-    const STATE = {
-        frames: [
-            { id: 1, url: '172.16.8.91', mode: 'direct', scale: 1, x:0, y:0, padOpen: false, drag: false },
-            { id: 2, url: '172.16.8.92', mode: 'direct', scale: 1, x:0, y:0, padOpen: false, drag: false },
-            { id: 3, url: '172.16.8.93', mode: 'direct', scale: 1, x:0, y:0, padOpen: false, drag: false },
-            { id: 4, url: '172.16.8.94', mode: 'direct', scale: 1, x:0, y:0, padOpen: false, drag: false },
-        ],
-        maximizedId: null
-    };
+    var activeFrames = []; 
+    var maximizedId = null;
+    var refreshTimers = {};
+    var dragContent = { id: null, startX: 0, startY: 0, initX: 0, initY: 0 };
+    // Interval to attempt injection into Direct frames (requires disabled web security)
+    var directInjectorInterval = null;
 
-    // --- INITIALIZATION ---
+    function icon(name) { return '<svg viewBox="0 0 24 24">' + (ICONS[name] || '') + '</svg>'; }
+    
     function init() {
-        const app = document.getElementById('app');
-        app.innerHTML = STATE.frames.map(f => `
-            <div id="frame-${f.id}" class="frame">
-                <!-- Toolbar -->
-                <div class="hover-trigger"></div>
-                <div class="toolbar">
-                    <div class="badge">${f.id}</div>
-                    <button class="btn btn-mode" id="btn-mode-${f.id}" onclick="toggleMode(${f.id})">${f.mode}</button>
-                    <div class="url-wrapper">
-                        <span class="icon-lock">${icon('lock')}</span>
-                        <input type="text" class="url-input" id="input-${f.id}" value="${f.url}" onkeydown="handleEnter(${f.id}, event)">
-                    </div>
-                    <button class="btn" title="Diagnose" onclick="openTrouble(${f.id})" style="color:#eab308">${icon('stethoscope')}</button>
-                    <button class="btn" onclick="reloadFrame(${f.id})">${icon('refresh')}</button>
-                    <button class="btn" id="btn-pad-${f.id}" onclick="togglePad(${f.id})">${icon('gamepad')}</button>
-                    <div style="width:1px; height:18px; background:var(--border); margin:0 4px;"></div>
-                    <button class="btn" id="btn-max-${f.id}" onclick="toggleMax(${f.id})">${icon('maximize')}</button>
-                    <button class="btn btn-danger" onclick="clearFrame(${f.id})">${icon('close')}</button>
-                </div>
-
-                <!-- Control Pad -->
-                <div id="pad-${f.id}" class="control-pad">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <span style="font-size:10px; color:#60a5fa; font-weight:bold;">CONTROLS</span>
-                        <button class="btn" style="width:20px; height:20px; min-height:0;" onclick="togglePad(${f.id})">${icon('close')}</button>
-                    </div>
-                    <div class="pad-grid">
-                        <button class="pad-btn" onclick="zoom(${f.id}, 0.1)">${icon('plus')}</button>
-                        <button class="pad-btn" onclick="pan(${f.id}, 0, 1)">${icon('arrowUp')}</button>
-                        <button class="pad-btn" onclick="zoom(${f.id}, -0.1)">${icon('minus')}</button>
-                        <button class="pad-btn" onclick="pan(${f.id}, 1, 0)">${icon('arrowLeft')}</button>
-                        <button class="pad-btn" id="btn-drag-${f.id}" onclick="toggleDrag(${f.id})">${icon('move')}</button>
-                        <button class="pad-btn" onclick="pan(${f.id}, -1, 0)">${icon('arrowRight')}</button>
-                        <button class="pad-btn" onclick="resetView(${f.id})" style="grid-column: span 3; color:#f87171; font-size:10px; font-weight:bold;">RESET</button>
-                    </div>
-                </div>
-
-                <!-- Viewport -->
-                <div class="viewport" id="viewport-${f.id}">
-                    <div class="drag-overlay" id="drag-overlay-${f.id}"></div>
-                    <div class="content-wrapper" id="wrapper-${f.id}">
-                        <iframe id="iframe-${f.id}" src="about:blank"></iframe>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
-        // Initial Load
-        STATE.frames.forEach(f => loadFrame(f.id));
-        
-        // Orientation
-        const checkOrientation = () => document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
-        window.addEventListener('resize', checkOrientation);
-        checkOrientation();
-
-        // Drag Handlers
-        STATE.frames.forEach(f => setupDrag(f.id));
-    }
-
-    // --- CORE FUNCTIONS ---
-    function getUrl(f) {
-        if (!f.url || f.url === 'about:blank') return 'about:blank';
-        let raw = f.url.startsWith('http') ? f.url : `https://${f.url}`;
-        if (f.mode === 'magic') return `https://translate.google.com/translate?sl=auto&tl=ko&u=${encodeURIComponent(raw)}`;
-        return raw;
-    }
-
-    function loadFrame(id) {
-        const f = STATE.frames.find(x => x.id === id);
-        const iframe = document.getElementById(`iframe-${id}`);
-        const wrapper = document.getElementById(`wrapper-${id}`);
-        
-        if (f.mode === 'popup') {
-            wrapper.innerHTML = `
-                <div style="display:flex; flex-direction:column; align-items:center; color:#9ca3af; text-align:center;">
-                    <div style="margin-bottom:8px;">${icon('external')}</div>
-                    <div style="font-size:12px; margin-bottom:12px;">Popup Mode</div>
-                    <button class="btn" style="width:auto; padding:0 12px; border:1px solid #4b5563;" onclick="window.open('https://${f.url}','_blank')">Open Window</button>
-                </div>
-            `;
-        } else {
-            // Restore iframe if needed
-            if (!wrapper.querySelector('iframe')) {
-                wrapper.innerHTML = `<iframe id="iframe-${id}" src=""></iframe>`;
-            }
-            document.getElementById(`iframe-${id}`).src = getUrl(f);
-        }
-        
-        document.getElementById(`btn-mode-${id}`).innerText = f.mode;
-        // Color code modes
-        const modeBtn = document.getElementById(`btn-mode-${id}`);
-        modeBtn.style.color = f.mode === 'magic' ? '#c084fc' : f.mode === 'popup' ? '#fb923c' : '#9ca3af';
-        modeBtn.style.borderColor = f.mode === 'magic' ? '#a855f7' : f.mode === 'popup' ? '#f97316' : '#374151';
-    }
-
-    function handleEnter(id, e) {
-        if (e.key === 'Enter') {
-            const f = STATE.frames.find(x => x.id === id);
-            f.url = e.target.value.trim();
-            loadFrame(id);
-            e.target.blur();
-        }
-    }
-
-    function reloadFrame(id) {
-        const f = STATE.frames.find(x => x.id === id);
-        loadFrame(id);
-    }
-
-    function clearFrame(id) {
-        const f = STATE.frames.find(x => x.id === id);
-        f.url = '';
-        document.getElementById(`input-${id}`).value = '';
-        loadFrame(id);
-    }
-
-    function toggleMode(id) {
-        const f = STATE.frames.find(x => x.id === id);
-        const modes = ['direct', 'magic', 'popup'];
-        f.mode = modes[(modes.indexOf(f.mode) + 1) % modes.length];
-        loadFrame(id);
-    }
-
-    function toggleMax(id) {
-        const f = STATE.frames.find(x => x.id === id);
-        const el = document.getElementById(`frame-${id}`);
-        const btn = document.getElementById(`btn-max-${id}`);
-        
-        if (STATE.maximizedId === id) {
-            // Restore
-            STATE.maximizedId = null;
-            el.classList.remove('maximized');
-            document.body.classList.remove('maximized-view');
-            btn.innerHTML = icon('maximize');
-            // Show others
-            document.querySelectorAll('.frame').forEach(div => div.classList.remove('hidden-frame'));
-        } else {
-            // Maximize
-            if (STATE.maximizedId) toggleMax(STATE.maximizedId); // Restore current
-            STATE.maximizedId = id;
-            el.classList.add('maximized');
-            document.body.classList.add('maximized-view');
-            btn.innerHTML = icon('minimize');
-            // Hide others to save resources
-            document.querySelectorAll('.frame').forEach(div => {
-                if (div.id !== `frame-${id}`) div.classList.add('hidden-frame');
-            });
-        }
-    }
-
-    // --- TRANSFORM & DRAG ---
-    function updateTransform(id) {
-        const f = STATE.frames.find(x => x.id === id);
-        const el = document.getElementById(`wrapper-${id}`);
-        if(el) el.style.transform = `translate(${f.x}px, ${f.y}px) scale(${f.scale})`;
-    }
-
-    function zoom(id, delta) {
-        const f = STATE.frames.find(x => x.id === id);
-        f.scale = Math.max(0.1, Math.min(f.scale + delta, 5));
-        updateTransform(id);
-    }
-
-    function pan(id, dx, dy) {
-        const f = STATE.frames.find(x => x.id === id);
-        f.x += dx * 50;
-        f.y += dy * 50;
-        updateTransform(id);
-    }
-
-    function resetView(id) {
-        const f = STATE.frames.find(x => x.id === id);
-        f.x = 0; f.y = 0; f.scale = 1;
-        updateTransform(id);
-    }
-
-    function togglePad(id) {
-        const pad = document.getElementById(`pad-${id}`);
-        pad.classList.toggle('show');
-        const btn = document.getElementById(`btn-pad-${id}`);
-        btn.classList.toggle('active');
-    }
-
-    function toggleDrag(id) {
-        const f = STATE.frames.find(x => x.id === id);
-        f.drag = !f.drag;
-        const frameEl = document.getElementById(`frame-${id}`);
-        const btn = document.getElementById(`btn-drag-${id}`);
-        
-        if (f.drag) {
-            frameEl.classList.add('dragging');
-            btn.style.background = '#2563eb';
-        } else {
-            frameEl.classList.remove('dragging');
-            btn.style.background = '#374151';
-        }
-    }
-
-    function setupDrag(id) {
-        const overlay = document.getElementById(`drag-overlay-${id}`);
-        let isDown = false, startX, startY, initX, initY;
-
-        overlay.addEventListener('mousedown', e => {
-            isDown = true;
-            startX = e.clientX; startY = e.clientY;
-            const f = STATE.frames.find(x => x.id === id);
-            initX = f.x; initY = f.y;
-            overlay.style.cursor = 'grabbing';
-        });
-
-        overlay.addEventListener('wheel', e => {
-            e.preventDefault();
-            const delta = e.deltaY > 0 ? -0.1 : 0.1;
-            zoom(id, delta);
-        });
-
-        window.addEventListener('mousemove', e => {
-            if (!isDown) return;
-            const f = STATE.frames.find(x => x.id === id);
-            f.x = initX + (e.clientX - startX);
-            f.y = initY + (e.clientY - startY);
-            updateTransform(id);
-        });
-
-        window.addEventListener('mouseup', () => {
-            isDown = false;
-            overlay.style.cursor = 'move';
-        });
-    }
-
-    // --- MODALS & SETTINGS ---
-    function openSettings() { document.getElementById('modal-settings').classList.add('open'); checkAllNetworks(); }
-    function openModal(id) { document.getElementById(id).classList.add('open'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-    function setGlobalMode(mode) {
-        STATE.frames.forEach(f => {
-            f.mode = mode;
-            loadFrame(f.id);
-        });
-        closeModal('modal-settings');
-    }
-
-    async function checkAllNetworks() {
-        const list = document.getElementById('network-list');
-        list.innerHTML = '<div style="font-size:12px; color:#9ca3af; padding:4px;">Scanning...</div>';
-        
-        let html = '';
-        for (let f of STATE.frames) {
-            const status = await checkConnection(f.url);
-            html += `
-                <div class="card" style="display:flex; justify-content:space-between; padding:8px; margin-bottom:4px;">
-                    <div style="font-size:12px; font-weight:bold;">CH ${f.id} <span style="color:#6b7280; font-weight:normal;">${f.url || 'Empty'}</span></div>
-                    <div style="font-size:12px; font-weight:bold; color:${status.color}">${status.text}</div>
-                </div>
-            `;
-        }
-        list.innerHTML = html;
-    }
-
-    async function openTrouble(id) {
-        openModal('modal-trouble');
-        const content = document.getElementById('trouble-content');
-        content.innerHTML = '<div style="padding:20px; text-align:center;">Diagnosing...</div>';
-        
-        const f = STATE.frames.find(x => x.id === id);
-        const res = await checkConnection(f.url);
-        
-        content.innerHTML = `
-            <div style="background:#111; padding:10px; border-radius:6px; font-family:monospace; margin-bottom:15px; font-size:12px; word-break:break-all;">
-                Target: ${f.url || 'None'}
-            </div>
-            <div style="text-align:center; margin-bottom:20px;">
-                <div style="font-size:16px; font-weight:bold; color:${res.color}; margin-bottom:5px;">${res.text}</div>
-                <div style="font-size:12px; color:#9ca3af;">${res.msg}</div>
-            </div>
-            ${res.ok ? `
-                <button class="btn-block" style="background:#22c55e;" onclick="closeModal('modal-trouble')">OK</button>
-            ` : `
-                <button class="btn-block" onclick="window.open('https://${f.url}', '_blank')">Open in New Tab (Accept SSL)</button>
-            `}
-        `;
-    }
-
-    async function checkConnection(url) {
-        if (!url) return { ok: false, text: 'EMPTY', color: '#6b7280', msg: 'No URL entered' };
         try {
-            const target = url.startsWith('http') ? url : `https://${url}`;
-            await fetch(target, { mode: 'no-cors', cache: 'no-store' });
-            return { ok: true, text: 'ONLINE', color: '#22c55e', msg: 'Server responded (Opaque)' };
-        } catch (e) {
-            return { ok: false, text: 'ERROR', color: '#ef4444', msg: 'Connection Refused / SSL Error' };
+            var saved = localStorage.getItem('quad_frames_v106'); // Updated key
+            if(saved) {
+                activeFrames = JSON.parse(saved);
+                if(!Array.isArray(activeFrames) || activeFrames.length === 0) throw new Error("bad data");
+            } else { throw new Error("no data"); }
+        } catch(e) { activeFrames = JSON.parse(JSON.stringify(DEFAULT_FRAMES)); }
+
+        renderFrames();
+        window.addEventListener('mousemove', handleGlobalMouseMove);
+        window.addEventListener('mouseup', handleGlobalMouseUp);
+        window.onresize = function() { document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth); };
+        document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
+
+        setTimeout(function() {
+            activeFrames.forEach(function(f) {
+                if(f.refreshRate > 0) applyAutoRefresh(f.id);
+                if(['inject', 'write', 'blob'].indexOf(f.mode) !== -1) loadInjectedFrame(f.id); 
+            });
+            // START CROSS-FRAME INJECTOR FOR DIRECT MODE
+            startDirectInjector();
+        }, 500);
+    }
+
+    // --- ACTIONS ---
+    window.addFrame = function() {
+        if (activeFrames.length >= 4) return;
+        var currentIds = activeFrames.map(function(x){ return x.id; });
+        var nextId = 1;
+        while(currentIds.indexOf(nextId) !== -1) nextId++;
+        var newFrame = JSON.parse(JSON.stringify(DEFAULT_FRAMES[0]));
+        newFrame.id = nextId;
+        activeFrames.push(newFrame);
+        activeFrames.sort(function(a,b){ return a.id - b.id; });
+        saveState(); renderFrames();
+    };
+
+    window.removeFrame = function(id) {
+        if (maximizedId === id) maximizedId = null;
+        if (refreshTimers[id]) clearInterval(refreshTimers[id]);
+        activeFrames = activeFrames.filter(function(f){ return f.id !== id; });
+        saveState(); renderFrames();
+    };
+
+    window.toggleMode = function(id) {
+        var f = activeFrames.find(function(x){ return x.id===id; });
+        var modes = ['direct', 'inject', 'write', 'blob', 'popup'];
+        f.mode = modes[(modes.indexOf(f.mode) + 1) % modes.length];
+        saveState(); renderFrames();
+    };
+
+    window.toggleMax = function(id) { maximizedId = (maximizedId === id) ? null : id; renderFrames(); };
+
+    window.reloadFrame = function(id) {
+        var f = activeFrames.find(function(x){ return x.id===id; });
+        if(f.mode === 'popup') { renderFrames(); return; }
+        if (['inject', 'write', 'blob'].indexOf(f.mode) !== -1) { loadInjectedFrame(id); }
+        else { var iframe = document.getElementById('iframe-'+id); if(iframe) iframe.src = iframe.src; }
+    };
+
+    window.updateUrl = function(id, val) {
+        var f = activeFrames.find(function(x){ return x.id===id; });
+        f.url = val.trim(); saveState();
+    };
+
+    window.triggerEnter = function(id) {
+        var input = document.getElementById('input-'+id);
+        if(input) { window.updateUrl(id, input.value); window.reloadFrame(id); }
+    };
+    
+    window.handleEnter = function(id, e) {
+        if(e.key === 'Enter') { window.updateUrl(id, e.target.value); window.reloadFrame(id); e.target.blur(); }
+    };
+
+    // --- RENDER ---
+    function renderFrames() {
+        var app = document.getElementById('app');
+        if(!app) return;
+        
+        app.className = 'count-' + activeFrames.length;
+        var html = '';
+        
+        var addBtn = document.getElementById('btn-add-frame');
+        if(addBtn) {
+            if (activeFrames.length >= 4) addBtn.classList.add('disabled');
+            else addBtn.classList.remove('disabled');
+        }
+
+        for(var i=0; i<activeFrames.length; i++) {
+            var f = activeFrames[i];
+            var isMax = (maximizedId === f.id) ? 'maximized' : '';
+            var content = '';
+            var urlDisplay = (f.url || '').replace(/"/g, '&quot;');
+            
+            if(f.mode === 'popup') {
+                content = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#9ca3af">' + 
+                          icon('external') + '<div style="margin-top:10px">Popup Mode</div>' +
+                          '<button class="btn" style="width:auto;border:1px solid #4b5563;margin-top:10px" onclick="window.open(\'https://' + f.url + '\',\'_blank\')">Open</button></div>';
+            } else {
+                var src = (['inject','write','blob'].indexOf(f.mode) !== -1) ? 'about:blank' : (f.url.startsWith('http') ? f.url : 'https://' + f.url);
+                content = '<iframe id="iframe-' + f.id + '" name="frame-' + f.id + '" src="' + src + '" sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-downloads"></iframe>';
+            }
+            
+            var keyColor = (f.user||f.pass) ? 'color:var(--success)' : 'color:var(--text-muted)';
+            var kaClass = f.keepAlive ? 'heartbeat-active' : '';
+
+            html += 
+            '<div id="frame-' + f.id + '" class="frame ' + isMax + '">' +
+                '<div class="hover-trigger"></div>' +
+                '<div class="toolbar">' +
+                    '<div class="badge">' + f.id + '</div>' +
+                    '<button class="btn btn-mode" onclick="toggleMode(' + f.id + ')">' + f.mode + '</button>' +
+                    '<div class="url-wrapper">' +
+                        '<span class="icon-lock">' + icon('lock') + '</span>' +
+                        '<input type="text" class="url-input" id="input-' + f.id + '" value="' + urlDisplay + '" onchange="updateUrl(' + f.id + ', this.value)" onkeydown="handleEnter(' + f.id + ', event)">' +
+                        '<div class="btn-go" onclick="triggerEnter(' + f.id + ')">' + icon('go') + '</div>' +
+                    '</div>' +
+                    '<button class="btn" onclick="toggleLoginPad(' + f.id + ')" style="' + keyColor + '" title="Smart Login">' + icon('key') + '</button>' +
+                    '<button class="btn ' + kaClass + '" id="btn-keepalive-' + f.id + '" onclick="toggleKeepAlive(' + f.id + ')" title="Keep Session Alive">' + icon('heart') + '</button>' +
+                    '<button class="btn" id="btn-refresh-' + f.id + '" onclick="toggleAutoRefresh(' + f.id + ')" title="Auto Refresh">' + icon('clock') + '</button>' +
+                    '<button class="btn" onclick="openTrouble(' + f.id + ')" style="color:#f59e0b" title="Diagnose">' + icon('doc') + '</button>' +
+                    '<button class="btn" onclick="reloadFrame(' + f.id + ')">' + icon('refresh') + '</button>' +
+                    '<button class="btn" onclick="togglePad(' + f.id + ')">' + icon('gamepad') + '</button>' +
+                    '<button class="btn" onclick="toggleMax(' + f.id + ')">' + icon((maximizedId === f.id) ? 'min' : 'max') + '</button>' +
+                    '<button class="btn btn-danger" onclick="removeFrame(' + f.id + ')">' + icon('close') + '</button>' +
+                '</div>' +
+
+                '<div id="pad-' + f.id + '" class="control-pad" style="width:140px;">' +
+                    '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">' +
+                        '<span style="font-size:9px; color:var(--accent); font-weight:bold;">CTRL</span>' +
+                        '<button class="btn" style="width:20px; height:20px;" onclick="togglePad(' + f.id + ')">' + icon('close') + '</button>' +
+                    '</div>' +
+                    '<div class="pad-grid">' +
+                        '<button class="pad-btn" onclick="zoom(' + f.id + ', 0.1)">' + icon('plus') + '</button>' +
+                        '<button class="pad-btn" onclick="pan(' + f.id + ', 0, 1)">' + icon('arrowUp') + '</button>' +
+                        '<button class="pad-btn" onclick="zoom(' + f.id + ', -0.1)">' + icon('minus') + '</button>' +
+                        '<button class="pad-btn" onclick="pan(' + f.id + ', 1, 0)">' + icon('arrowLeft') + '</button>' +
+                        '<button class="pad-btn" onclick="toggleDrag(' + f.id + ')" id="btn-drag-' + f.id + '">' + icon('move') + '</button>' +
+                        '<button class="pad-btn" onclick="pan(' + f.id + ', -1, 0)">' + icon('arrowRight') + '</button>' +
+                        '<button class="pad-btn" onclick="resetView(' + f.id + ')" style="grid-column: span 3; font-size:9px;">RESET</button>' +
+                    '</div>' +
+                '</div>' +
+
+                '<div id="login-pad-' + f.id + '" class="control-pad">' +
+                     '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+                        '<span style="font-size:11px; font-weight:bold; color:var(--accent)">SMART LOGIN</span>' +
+                        '<button class="btn" style="width:20px;height:20px;" onclick="toggleLoginPad(' + f.id + ')">' + icon('close') + '</button>' +
+                    '</div>' +
+                    '<div style="margin-bottom:8px;">' +
+                        '<input class="input-dark" placeholder="Username" value="' + (f.user||'') + '" onchange="setCred(' + f.id + ', \'user\', this.value)">' +
+                        '<input class="input-dark" type="password" placeholder="Password" value="' + (f.pass||'') + '" style="margin-top:4px;" onchange="setCred(' + f.id + ', \'pass\', this.value)">' +
+                    '</div>' +
+                    '<button class="pad-btn" style="width:100%; margin-top:0;" onclick="executeLogin(' + f.id + ')">LOGIN</button>' +
+                '</div>' +
+
+                '<div class="viewport">' +
+                    '<div class="drag-overlay" id="drag-overlay-' + f.id + '"></div>' +
+                    '<div class="content-wrapper" id="wrapper-' + f.id + '">' + content + '</div>' +
+                '</div>' +
+            '</div>';
+        }
+        app.innerHTML = html;
+
+        activeFrames.forEach(function(f) {
+            setupDrag(f.id);
+            updateTransform(f.id);
+            updateRefreshButton(f.id);
+            if(f.keepAlive) applyKeepAlive(f.id, true);
+            var dragBtn = document.getElementById('btn-drag-'+f.id);
+            var frameEl = document.getElementById('frame-'+f.id);
+            if(frameEl && frameEl.classList.contains('dragging') && dragBtn) dragBtn.classList.add('active');
+        });
+    }
+
+    // --- LOGIC ---
+    window.saveState = function() { try { localStorage.setItem('quad_frames_v106', JSON.stringify(activeFrames)); } catch(e){} };
+    window.togglePad = function(id) { document.getElementById('login-pad-'+id).classList.remove('show'); document.getElementById('pad-'+id).classList.toggle('show'); };
+    window.toggleLoginPad = function(id) { document.getElementById('pad-'+id).classList.remove('show'); document.getElementById('login-pad-'+id).classList.toggle('show'); };
+
+    window.toggleAutoRefresh = function(id) {
+        var f = activeFrames.find(function(x){ return x.id===id; });
+        var rates = [0, 30000, 60000, 300000];
+        var idx = rates.indexOf(f.refreshRate || 0);
+        if (idx === -1) idx = 0;
+        f.refreshRate = rates[(idx + 1) % rates.length];
+        saveState(); window.applyAutoRefresh(id); window.updateRefreshButton(id);
+    };
+
+    window.applyAutoRefresh = function(id) {
+        if (refreshTimers[id]) clearInterval(refreshTimers[id]);
+        var f = activeFrames.find(function(x){ return x.id===id; });
+        if (f && f.refreshRate > 0) {
+            refreshTimers[id] = setInterval(function(){ window.reloadFrame(id); }, f.refreshRate);
+        }
+    };
+
+    window.updateRefreshButton = function(id) {
+        var btn = document.getElementById('btn-refresh-'+id);
+        var f = activeFrames.find(function(x){ return x.id===id; });
+        if (!btn || !f) return;
+        var r = f.refreshRate;
+        btn.style.color = r===30000?'var(--success)':(r===60000?'var(--accent)':(r===300000?'var(--warn)':'var(--text-muted)'));
+    };
+
+    // --- KEEP ALIVE ---
+    window.toggleKeepAlive = function(id) {
+        var f = activeFrames.find(function(x){ return x.id===id; });
+        f.keepAlive = !f.keepAlive;
+        saveState();
+        var btn = document.getElementById('btn-keepalive-'+id);
+        if(f.keepAlive) { btn.classList.add('heartbeat-active'); applyKeepAlive(id, true); }
+        else { btn.classList.remove('heartbeat-active'); applyKeepAlive(id, false); }
+    };
+
+    window.applyKeepAlive = function(id, enable) {
+        var f = activeFrames.find(function(x){ return x.id===id; });
+        // Try Inject Mode first
+        if(['inject', 'write', 'blob'].indexOf(f.mode) !== -1) {
+            var iframe = document.getElementById('iframe-'+id);
+            if(iframe && iframe.contentWindow && iframe.contentWindow.toggleKeepAlive) {
+                iframe.contentWindow.toggleKeepAlive(enable);
+            }
+        }
+        // NOTE: For Direct mode, this depends on startDirectInjector() success
+    };
+
+    window.setCred = function(id, type, val) {
+        var f = activeFrames.find(function(x){ return x.id===id; });
+        f[type] = val.trim(); saveState();
+    };
+
+    window.executeLogin = function(id) {
+        var f = activeFrames.find(function(x){ return x.id===id; });
+        if (!f.user || !f.pass) { alert('Credentials required'); return; }
+        
+        // 1. Try Direct Injection Login first (Preferred for Direct Mode)
+        if(f.mode === 'direct') {
+             var iframe = document.getElementById('iframe-'+id);
+             try {
+                 if(iframe.contentWindow && iframe.contentWindow.doSmartLogin) {
+                     iframe.contentWindow.doSmartLogin(f.user, f.pass);
+                     document.getElementById('login-pad-'+id).classList.remove('show');
+                     return;
+                 }
+             } catch(e) { /* CORS blocked */ }
+        }
+
+        // 2. Fallback to Inject Mode Logic
+        if (['inject', 'write', 'blob'].indexOf(f.mode) !== -1) {
+            var iframe = document.getElementById('iframe-'+id);
+            if(iframe && iframe.contentWindow && iframe.contentWindow.doSmartLogin) {
+                iframe.contentWindow.doSmartLogin(f.user, f.pass);
+                document.getElementById('login-pad-'+id).classList.remove('show');
+            } else { alert('Smart Login unavailable. Wait for load.'); }
+        } else {
+            // 3. Fallback to Basic Auth URL (Likely won't work based on requirements, but fallback exists)
+            var raw = f.url.replace(/^https?:\/\//, '');
+            var proto = f.url.startsWith('http:') ? 'http://' : 'https://';
+            var final = proto + encodeURIComponent(f.user) + ':' + encodeURIComponent(f.pass) + '@' + raw;
+            var iframe = document.getElementById('iframe-'+id);
+            if (iframe) { iframe.src = final; document.getElementById('login-pad-'+id).classList.remove('show'); }
+        }
+    };
+
+    // --- DIRECT MODE INJECTOR (For Fully Kiosk with webSecurity: false) ---
+    function startDirectInjector() {
+        if(directInjectorInterval) clearInterval(directInjectorInterval);
+        directInjectorInterval = setInterval(function() {
+            activeFrames.forEach(function(f) {
+                if(f.mode !== 'direct') return;
+                var iframe = document.getElementById('iframe-'+f.id);
+                if(!iframe) return;
+                
+                try {
+                    // Check if we can access the doc (CORS check)
+                    var doc = iframe.contentDocument;
+                    if(!doc) return;
+                    
+                    // Check if already injected
+                    if(iframe.contentWindow.isDirectInjected) return;
+                    
+                    // Inject Scripts
+                    console.log("Injecting Auto-Pilot into Direct Frame " + f.id);
+                    
+                    // 1. Define Helper functions in child window
+                    iframe.contentWindow.doSmartLogin = function(u, p) {
+                        function setVal(selector, val) {
+                            var list = document.querySelectorAll(selector);
+                            list.forEach(function(el){
+                                el.value = val; el.setAttribute('value', val);
+                                if(el.shadowRoot) {
+                                    var inp = el.shadowRoot.querySelector('input');
+                                    if(inp) { inp.value = val; inp.dispatchEvent(new Event('input', {bubbles:true})); inp.dispatchEvent(new Event('change', {bubbles:true})); }
+                                }
+                                el.dispatchEvent(new Event('input', {bubbles:true})); 
+                                el.dispatchEvent(new Event('change', {bubbles:true}));
+                            });
+                        }
+                        setVal('#username', u); setVal('#password', p);
+                        setVal('input[name*="Username"]', u); setVal('input[name*="Password"]', p); // Generic ASP.NET
+                        
+                        // Try clicking button
+                        setTimeout(function(){ 
+                            var btn = document.querySelector('.sign-in-button') || document.querySelector('button[type="submit"]');
+                            if(btn) { btn.click(); if(btn.shadowRoot){ var b = btn.shadowRoot.querySelector('button'); if(b) b.click(); } }
+                        }, 500);
+                    };
+
+                    // 2. Start Auto-Pilot Loop inside child
+                    iframe.contentWindow.eval(`
+                        window.isDirectInjected = true;
+                        var creds = { user: "${f.user}", pass: "${f.pass}" };
+                        
+                        // Add some style for login box if missing
+                        var style = document.createElement('style');
+                        style.innerHTML = 'fluent-text-field { background: rgba(255,255,255,0.1); border:1px solid #ccc; padding:2px; margin-bottom:5px; }';
+                        document.head.appendChild(style);
+
+                        setInterval(function(){
+                            // A. Auto Reconnect (Blazor)
+                            var modal = document.getElementById("components-reconnect-modal");
+                            if (modal && modal.style.display !== "none" && modal.style.visibility !== "hidden") {
+                                var btn = modal.querySelector("button"); if(btn) btn.click();
+                            }
+                            
+                            // B. Blazor Error UI
+                            var errUi = document.getElementById("blazor-error-ui");
+                            if (errUi && errUi.style.display !== "none") {
+                                var reloadBtn = errUi.querySelector(".reload"); if(reloadBtn) reloadBtn.click();
+                            }
+
+                            // C. Auto Login
+                            if(creds.user && creds.pass) {
+                                var userField = document.querySelector("#username") || document.querySelector("input[name*='Username']");
+                                if(userField && !userField.value) { window.doSmartLogin(creds.user, creds.pass); }
+                            }
+                        }, 2000);
+                    `);
+                    
+                } catch(e) {
+                    // Security Error (CORS) - Expected in standard browsers, ignored in Fully Kiosk with webSecurity:false
+                }
+            });
+        }, 3000);
+    }
+
+    // --- DRAG ---
+    window.zoom = function(id, delta) { var f = activeFrames.find(function(x){ return x.id===id; }); f.scale = Math.max(0.1, Math.min(f.scale + delta, 5)); saveState(); updateTransform(f.id); };
+    window.pan = function(id, dx, dy) { var f = activeFrames.find(function(x){ return x.id===id; }); f.x += dx * 50; f.y += dy * 50; saveState(); updateTransform(f.id); };
+    window.resetView = function(id) { var f = activeFrames.find(function(x){ return x.id===id; }); f.x = 0; f.y = 0; f.scale = 1; saveState(); updateTransform(f.id); };
+    window.toggleDrag = function(id) { var el = document.getElementById('frame-'+id); if(!el) return; var dragging = el.classList.toggle('dragging'); var btn = document.getElementById('btn-drag-'+id); if(btn) { if(dragging) btn.classList.add('active'); else btn.classList.remove('active'); } };
+    function setupDrag(id) { var overlay = document.getElementById('drag-overlay-'+id); if (!overlay) return; overlay.onmousedown = function(e) { e.preventDefault(); dragContent.id = id; dragContent.startX = e.clientX; dragContent.startY = e.clientY; var f = activeFrames.find(function(x){ return x.id===id; }); dragContent.initX = f.x; dragContent.initY = f.y; }; overlay.onwheel = function(e) { e.preventDefault(); window.zoom(id, (e.deltaY < 0 ? 0.1 : -0.1)); }; }
+    function updateTransform(id) { var f = activeFrames.find(function(x){ return x.id===id; }); var el = document.getElementById('wrapper-'+id); if(el) el.style.transform = 'translate(' + f.x + 'px, ' + f.y + 'px) scale(' + f.scale + ')'; }
+    function handleGlobalMouseMove(e) { if (!dragContent.id) return; var f = activeFrames.find(function(x){ return x.id===dragContent.id; }); if (f) { f.x = dragContent.initX + (e.clientX - dragContent.startX); f.y = dragContent.initY + (e.clientY - dragContent.startY); updateTransform(f.id); } }
+    function handleGlobalMouseUp() { if (dragContent.id) { dragContent.id = null; saveState(); } }
+
+    window.openSettings = function() { document.getElementById('modal-settings').classList.add('open'); if(window.checkAllNetworks) window.checkAllNetworks(); };
+    window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
+    window.resetAllFrames = function() { hardReset(); };
+    window.setGlobalMode = function(mode) { activeFrames.forEach(function(f){ f.mode = mode; }); saveState(); renderFrames(); window.closeModal('modal-settings'); };
+
+    window.checkConnection = async function(url) {
+        if (!url) return { ok: false, text: 'EMPTY', color: '#6b7280', msg: 'No URL entered' };
+        try { await fetch(url.startsWith('http')?url:'https://'+url, { mode: 'no-cors', cache: 'no-store' }); return { ok: true, text: 'ONLINE', color: '#22c55e', msg: 'Server responded' }; } catch (e) { return { ok: false, text: 'ERROR', color: '#ef4444', msg: 'Connection Refused / SSL Error' }; }
+    };
+    window.checkAllNetworks = async function() {
+        var list = document.getElementById('network-list'); if(!list) return; list.innerHTML = '<div style="font-size:12px; color:#9ca3af; padding:4px;">Scanning...</div>'; var html = '';
+        for (var i=0; i<activeFrames.length; i++) { var f = activeFrames[i]; var s = await window.checkConnection(f.url); html += '<div class="card" style="display:flex;justify-content:space-between;padding:8px;margin-bottom:4px;"><div style="font-size:12px;font-weight:bold;">CH ' + f.id + ' <span style="color:#6b7280;">' + (f.url ? f.url.substring(0,20) : '') + '...</span></div><div style="font-size:12px;font-weight:bold;color:' + s.color + '">' + s.text + '</div></div>'; }
+        list.innerHTML = html;
+    };
+    window.openTrouble = async function(id) {
+        document.getElementById('modal-trouble').classList.add('open'); var content = document.getElementById('trouble-content'); if(content) content.innerHTML = 'Scanning...'; var f = activeFrames.find(function(x){ return x.id===id; }); if(!f) return;
+        var res = await window.checkConnection(f.url); var targetUrl = f.url.startsWith('http') ? f.url : 'https://' + f.url;
+        if(content) { content.innerHTML = '<div style="font-size:16px; font-weight:bold; color:'+res.color+'; margin-bottom:8px;">'+res.text+'</div><div style="font-size:12px; color:#9ca3af; margin-bottom:12px;">'+res.msg+'</div><button class="pad-btn" style="width:100%" onclick="window.open(\''+ targetUrl +'\', \'_blank\')">OPEN IN NEW WINDOW</button>'; }
+    };
+
+    // --- INJECTED SCRIPT (WEBSOCKET PROXY + AUTO-PILOT + SMART LOGIN) ---
+    function getInjectedScripts(baseUrl, origin, authHeader, creds) {
+        var lines = [];
+        lines.push('<style>');
+        lines.push('fluent-text-field { display: block; margin-bottom: 12px; min-height: 40px; background: rgba(255,255,255,0.05); border: 1px solid #4b5563; border-radius: 4px; padding: 4px; }');
+        lines.push('fluent-button { display: inline-flex; min-height: 32px; background: #2563eb; color: white; cursor: pointer; padding: 6px 16px; border-radius: 4px; align-items: center; justify-content: center; margin-top: 10px; }');
+        lines.push('</style>');
+        
+        lines.push('<script>');
+        lines.push('window.onerror=function(m){try{window.parent.postMessage({type:"log",msg:m},"*")}catch(e){}};');
+        lines.push('(function(){');
+        lines.push('  var baseUrl = "' + baseUrl + '";');
+        lines.push('  var origin = "' + origin + '";');
+        lines.push('  var creds = ' + JSON.stringify(creds || {}) + ';');
+        
+        if (authHeader) lines.push('  var authHeader = "' + authHeader + '";');
+        else lines.push('  var authHeader = null;');
+
+        // --- WEBSOCKET PROXY START (FIX BLAZOR CONNECTION) ---
+        lines.push('  var OrigWebSocket = window.WebSocket;');
+        lines.push('  window.WebSocket = function(url, protocols) {');
+        lines.push('    var absoluteUrl = url;');
+        lines.push('    if (url.startsWith("/")) {');
+        lines.push('       var protocol = (baseUrl.startsWith("https")) ? "wss://" : "ws://";');
+        lines.push('       var host = new URL(baseUrl).host;');
+        lines.push('       absoluteUrl = protocol + host + url;');
+        lines.push('    }');
+        lines.push('    console.log("WS Proxy:", absoluteUrl);');
+        lines.push('    return new OrigWebSocket(absoluteUrl, protocols);');
+        lines.push('  };');
+        // --- WEBSOCKET PROXY END ---
+
+        // --- FETCH PROXY (AUTH HEADERS) ---
+        lines.push('  var origFetch = window.fetch;');
+        lines.push('  window.fetch = function(input, init) {');
+        lines.push('    var u = input;');
+        lines.push('    var isRel = (typeof input === "string") && (input.indexOf("http") !== 0) && (input.indexOf("blob:") !== 0) && (input.indexOf("data:") !== 0);');
+        lines.push('    if(isRel) { u = (input.indexOf("/") === 0) ? origin + input : baseUrl + input; }');
+        lines.push('    if(authHeader) {');
+        lines.push('      init = init || {}; init.headers = init.headers || {};');
+        lines.push('      if (init.headers instanceof Headers) { init.headers.set("Authorization", authHeader); }');
+        lines.push('      else { init.headers["Authorization"] = authHeader; }');
+        lines.push('    }');
+        lines.push('    return origFetch(u, init);');
+        lines.push('  };');
+        
+        // --- AUTO-PILOT (AUTO LOGIN & RECONNECT) ---
+        lines.push('  setInterval(function(){');
+        lines.push('    // 1. Auto Reconnect');
+        lines.push('    var modal = document.getElementById("components-reconnect-modal");');
+        lines.push('    if (modal && modal.style.display !== "none" && modal.style.visibility !== "hidden") {');
+        lines.push('       console.log("Auto-Reconnect: Clicking retry...");');
+        lines.push('       var btn = modal.querySelector("button"); if(btn) btn.click();');
+        lines.push('    }');
+        lines.push('    // 2. Auto Login');
+        lines.push('    if(creds.user && creds.pass) {');
+        lines.push('      var userField = document.querySelector("#username") || document.querySelector("input[type=text]") || document.querySelector("input[name*=\'Username\']");');
+        lines.push('      if(userField && !userField.value) { window.doSmartLogin(creds.user, creds.pass); }');
+        lines.push('    }');
+        lines.push('    // 3. Blazor Error UI');
+        lines.push('    var errUi = document.getElementById("blazor-error-ui");');
+        lines.push('    if (errUi && errUi.style.display !== "none") {');
+        lines.push('        var reloadBtn = errUi.querySelector(".reload"); if(reloadBtn) reloadBtn.click();');
+        lines.push('    }');
+        lines.push('  }, 2000);');
+
+        lines.push('  window.doSmartLogin = function(u, p) {');
+        lines.push('    function setVal(selector, val) {');
+        lines.push('      var el = document.querySelector(selector); if (!el) return;');
+        lines.push('      el.setAttribute("value", val); el.value = val;');
+        lines.push('      if (el.shadowRoot) { var inp = el.shadowRoot.querySelector("input"); if (inp) { inp.value = val; inp.dispatchEvent(new Event("input", {bubbles:true})); inp.dispatchEvent(new Event("change", {bubbles:true})); } }');
+        lines.push('    }');
+        lines.push('    console.log("Auto-Pilot: Logging in...");');
+        lines.push('    setVal("#username", u); setVal("#password", p);');
+        lines.push('    setVal("input[name*=\'Username\']", u); setVal("input[name*=\'Password\']", p);');
+        lines.push('    setTimeout(function(){ var btn = document.querySelector(".sign-in-button"); if(btn) { btn.click(); if(btn.shadowRoot){ var b = btn.shadowRoot.querySelector("button"); if(b) b.click(); } } }, 500);');
+        lines.push('  };');
+
+        lines.push('  var keepAliveInterval = null;');
+        lines.push('  window.toggleKeepAlive = function(enable) {');
+        lines.push('    if(keepAliveInterval) clearInterval(keepAliveInterval);');
+        lines.push('    if(enable) {');
+        lines.push('      keepAliveInterval = setInterval(function(){ fetch(window.location.href).catch(function(){}); }, 60000);'); 
+        lines.push('    }');
+        lines.push('  };');
+        
+        lines.push('})();');
+        lines.push('<' + '/script>');
+        return lines.join('\n');
+    }
+
+    async function loadInjectedFrame(id) {
+        var f = activeFrames.find(function(x){ return x.id===id; });
+        var iframe = document.getElementById('iframe-'+id);
+        if(!iframe || !f.url) return;
+        
+        var url = f.url.startsWith('http') ? f.url : 'https://' + f.url;
+        if (!url.split('?')[0].endsWith('/') && !url.split('/').pop().includes('.')) url += '/';
+
+        try {
+            var authHeader = null;
+            var h = {};
+            if(f.user && f.pass && f.authMode === 'basic') {
+                authHeader = 'Basic ' + btoa(f.user+':'+f.pass);
+                h['Authorization'] = authHeader;
+            }
+            
+            var res = await fetch(url, {headers:h}).catch(function(e){ throw new Error(e.message); });
+            var html = await res.text();
+            
+            html = html.replace(new RegExp('<meta\\s+http-equiv=["\']X-Frame-Options["\'][^>]*>', 'gi'), '');
+            html = html.replace(new RegExp('<meta\\s+http-equiv=["\']Content-Security-Policy["\'][^>]*>', 'gi'), '');
+            html = html.replace(new RegExp('<base\\s+[^>]*>', 'gi'), '');
+
+            var uObj = new URL(url);
+            var baseUrl = uObj.href;
+            if (uObj.pathname.split('/').pop().includes('.')) {
+                baseUrl = uObj.href.substring(0, uObj.href.lastIndexOf('/') + 1);
+            }
+            
+            var baseTag = '<base href="' + baseUrl + '">';
+            var scriptBlock = getInjectedScripts(baseUrl, uObj.origin, authHeader, {user:f.user, pass:f.pass});
+            
+            if (html.toLowerCase().indexOf('<head>') !== -1) {
+                html = html.replace(/<head>/i, '<head>' + baseTag + scriptBlock);
+            } else {
+                html = baseTag + scriptBlock + html;
+            }
+            
+            var o = uObj.origin;
+            html = html.replace(/(href|src|action)=["']\/([^"']*)["']/gi, '$1="' + o + '/$2"');
+            
+            if (f.mode === 'inject') {
+                iframe.srcdoc = html;
+            } else if (f.mode === 'write') {
+                var d = iframe.contentWindow.document;
+                d.open(); d.write(html); d.close();
+            } else if (f.mode === 'blob') {
+                var blob = new Blob([html], { type: 'text/html' });
+                iframe.src = URL.createObjectURL(blob);
+            }
+            
+            if(f.keepAlive) {
+                setTimeout(function(){ 
+                    if(iframe.contentWindow && iframe.contentWindow.toggleKeepAlive) iframe.contentWindow.toggleKeepAlive(true);
+                }, 1000);
+            }
+
+        } catch(e) {
+            var errHtml = '<div style="color:red;padding:20px;font-family:monospace;">Load Error: '+e.message+'</div>';
+            iframe.srcdoc = errHtml;
         }
     }
 
-    // Run
-    init();
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+
 </script>
 </body>
 </html>
